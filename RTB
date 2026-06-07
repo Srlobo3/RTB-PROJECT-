@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>StruBall - Jogo Incremental</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body { margin: 0; overflow: hidden; background: #111; color: white; font-family: Arial, sans-serif; user-select: none; transition: 1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.desertTheme { background: #3a2f15; color: #fff; }
+.forestTheme { background: #0b1f0b; color: #fff; }
+.hellTheme { background: #260505; color: #fff; }
+.spaceTheme { background: #0a061c; color: #fff; }
+.heavenHellTheme { background: linear-gradient(135deg, #051026 0%, #1a0202 100%); color: #fff; }
+.mapEmoji { position: fixed; font-size: 45px; opacity: 0.14; pointer-events: none; z-index: 1; }
+#menu, #modeScreen { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; flex-direction: column; background: radial-gradient(circle, #222, #000); z-index: 10000; padding: 20px; }
+#menu h1 { font-size: clamp(36px, 10vw, 90px); font-family: 'Orbitron', sans-serif; color: #00aaff; text-shadow: 0 0 20px #00aaff, 0 0 50px #0080ff; text-align: center; line-height: 1.1; margin-bottom: 30px; }
+.menuDecoration { position: absolute; font-size: clamp(30px, 8vw, 70px); opacity: 0.12; }
+#menu button, #modeScreen button { padding: clamp(12px, 3vw, 20px) clamp(24px, 6vw, 60px); margin: 8px; border: none; border-radius: 18px; background: linear-gradient(45deg, #00aaff, #0055ff); color: white; font-size: clamp(18px, 4vw, 32px); cursor: pointer; transition: 0.2s; box-shadow: 0 0 20px #00aaff; width: min(340px, 90vw); }
+#menu button:hover, #modeScreen button:hover { transform: scale(1.05); }
+#modeScreen { display: none; z-index: 10001; }
+#modeScreen h1 { font-family: 'Orbitron', sans-serif; font-size: clamp(24px, 6vw, 50px); text-align: center; margin-bottom: 20px; color: #fff; text-shadow: 0 0 15px #fff; }
+#loading { position: fixed; inset: 0; background: radial-gradient(circle, #1a1a1a, #000); display: none; justify-content: center; align-items: center; flex-direction: column; z-index: 5000; }
+#loading h1 { font-size: 55px; text-shadow: 0 0 15px #00aaff; }
+#loadingBar { width: 420px; max-width: 90vw; height: 42px; background: #111; border-radius: 30px; overflow: hidden; margin-top: 25px; border: 3px solid #00aaff; box-shadow: 0 0 25px #00aaff, inset 0 0 15px #000; }
+#loadingFill { width: 0%; height: 100%; background: linear-gradient(90deg, #00aaff, #00ffee, #00ff99, #00ffee, #00aaff); background-size: 300%; animation: loadingGlow 2s linear infinite; }
+@keyframes loadingGlow { 0% { background-position: 0%; } 100% { background-position: 300%; } }
+#gameUI { display: none; position: fixed; inset: 0; width: 100%; height: 100%; }
+#score, #multiplierText, #activeBuffDisplay { width: 100%; text-align: center; z-index: 20; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 0 0 8px #000; }
+#score { position: absolute; top: 12px; font-size: clamp(18px, 4vw, 32px); font-weight: bold; }
+#multiplierText { position: absolute; top: clamp(38px, 8vw, 55px); font-size: clamp(13px, 3vw, 22px); color: gold; }
+#activeBuffDisplay { position: absolute; top: clamp(60px, 12vw, 90px); font-size: clamp(11px, 2.5vw, 18px); color: #00ff66; font-weight: bold; }
+.ironSoulBadge { position: absolute; top: 12px; left: 12px; color: #ff3333; font-weight: bold; font-size: clamp(13px, 3vw, 20px); text-shadow: 0 0 10px #ff0000, -1px -1px 0 #000, 1px 1px 0 #000; z-index: 20; }
+#ball { width: clamp(110px, 28vw, 160px); height: clamp(110px, 28vw, 160px); background: linear-gradient(145deg, #00aaff, #0055ff); border-radius: 50%; position: absolute; left: 50%; top: calc(50% - 40px); transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 0 40px #00aaff; z-index: 5; transition: transform 0.05s ease; }
+#ball:active { transform: translate(-50%, calc(-50%)) scale(0.92); }
+#rat { display: none; font-size: clamp(45px, 12vw, 75px); width:100%; height:100%; justify-content:center; align-items:center; }
+#equippedItemVisual { display: none; position: absolute; top: 0px; right: 0px; font-size: 40px; pointer-events: none; z-index: 10; filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); }
+#musicControls { position: fixed; top: 12px; right: 12px; z-index: 100; display: flex; gap: 8px; background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 30px; backdrop-filter: blur(5px); }
+.musicBtn { background: rgba(0,0,0,0.7); border: none; color: white; font-size: 20px; padding: 6px 12px; border-radius: 25px; cursor: pointer; transition: 0.2s; min-width: 44px; }
+.musicBtn:hover { background: #00aaff; transform: scale(1.05); }
+.musicBtn.mute { background: #ff3333; }
+.gameButton { position: fixed; right: 16px; border: none; border-radius: 14px; padding: 12px 20px; font-size: 20px; cursor: pointer; background: #222; color: white; z-index: 50; transition: 0.2s; border: 1px solid #444; white-space: nowrap; }
+.gameButton:hover { background: #333; }
+#openAdventure { bottom: 390px; background: linear-gradient(45deg, #ff0055, #aa0000); box-shadow: 0 0 10px #ff0055; border:none; }
+#openAdventure:hover { transform: scale(1.05); }
+#openInventory { bottom: 315px; }
+#openMap { bottom: 240px; }
+#openRecords { bottom: 165px; background: linear-gradient(45deg, #6a0dad, #9b30ff); box-shadow: 0 0 10px #9b30ff; border:none; }
+#openShop { bottom: 90px; }
+#openAchievements { bottom: 15px; background: linear-gradient(45deg, #cc9900, #ffcc00); color: black; box-shadow: 0 0 10px #ffcc00; border:none; font-weight:bold; }
+#resetButton { bottom: 15px; left: 16px; right: auto; background: linear-gradient(45deg, #550000, #990000); font-size: 14px; padding: 8px 14px; border:none; }
+#resetButton:hover { background: linear-gradient(45deg, #770000, #cc0000); }
+.popupMenu { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.96); z-index: 2500; display: none; justify-content: center; align-items: center; flex-direction: column; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.recordsContainer { background: #1a1a1a; border-radius: 20px; width: min(550px, 96vw); max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #9b30ff; }
+.recordsHeader { background: #111; padding: 15px; text-align: center; border-bottom: 2px solid #9b30ff; }
+.recordsHeader h2 { margin: 0; color: #9b30ff; font-family: 'Orbitron', sans-serif; }
+.recordsTabs { display: flex; flex-wrap: wrap; background: #222; padding: 8px; gap: 5px; border-bottom: 1px solid #444; }
+.recordsTabBtn { padding: 10px 16px; background: #333; border: none; border-radius: 8px; color: #ccc; cursor: pointer; font-size: 14px; transition: 0.2s; }
+.recordsTabBtn.active { background: #9b30ff; color: white; }
+.recordsContent { flex: 1; overflow-y: auto; padding: 12px; max-height: 50vh; -webkit-overflow-scrolling: touch; }
+.recordsContent .tabPane { display: none; }
+.recordsContent .tabPane.active { display: block; }
+.recordsCloseBtn { background: #aa0000; border: none; color: white; padding: 12px; font-size: 16px; cursor: pointer; width: 100%; border-radius: 0 0 20px 20px; transition: 0.2s; }
+.recordsCloseBtn:hover { background: #ff0000; }
+.statCard { background: #0d0d0d; border-radius: 10px; padding: 12px; margin-bottom: 8px; border-left: 4px solid #9b30ff; }
+.statCard .statValue { font-size: 24px; font-weight: bold; color: #ffd700; }
+.statCard .statLabel { color: #aaa; font-size: 12px; margin-top: 4px; }
+.enemyCard, .materialCard, .titleCard { background: #0d0d0d; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; border-left: 3px solid #9b30ff; }
+.enemyCard.locked, .materialCard.locked, .titleCard.locked { opacity: 0.6; filter: grayscale(0.3); border-left-color: #555; }
+.enemyCard .enemyName { font-weight: bold; color: #ffcc00; }
+.enemyCard.locked .enemyName:after { content: " ???"; color: #666; font-weight: normal; }
+.titleCard .titleBadge { font-size: 18px; margin-right: 8px; }
+#combatScreen, #storyScreen { display: none; z-index: 4000; flex-direction: column; background: rgba(0,0,0,0.98); overflow-y: auto; }
+.combat-area { display: flex; justify-content: center; align-items: center; gap: clamp(12px, 4vw, 30px); width: 100%; margin-top: 16px; flex-wrap: wrap; }
+.combat-entity { display: flex; flex-direction: column; align-items: center; min-width: 140px; }
+.combat-ball { width: clamp(70px, 18vw, 110px); height: clamp(70px, 18vw, 110px); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: clamp(28px, 7vw, 45px); box-shadow: 0 0 20px rgba(255,255,255,0.2); position:relative; }
+.combat-health-bg { width: clamp(100px, 25vw, 150px); height: 16px; background: #333; border-radius: 10px; margin-top: 10px; overflow: hidden; border: 2px solid #555; }
+.combat-health-fill { width: 100%; height: 100%; background: #00ff66; transition: 0.3s; }
+.enemy-hp-fill { background: #ff3333; }
+.combat-stats { margin-top: 10px; font-weight: bold; font-size: 16px; text-align: center; }
+#combatLog { margin-top: 14px; width: 92%; max-width: 500px; height: clamp(70px, 15vh, 120px); background: #111; border: 1px solid #333; padding: 8px; overflow-y: auto; font-family: monospace; border-radius: 10px; font-size: 12px; -webkit-overflow-scrolling: touch; }
+.attack-btn { margin-top: 14px; padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 50px); font-size: clamp(18px, 4.5vw, 26px); font-weight: bold; border-radius: 15px; border: none; cursor: pointer; background: linear-gradient(45deg, #00aaff, #0055ff); color: white; box-shadow: 0 0 20px #00aaff; width: 92%; max-width: 340px; transition: 0.2s; min-height: 50px; }
+.attack-btn:active { transform: scale(0.95); }
+.flee-btn { margin-top: 10px; padding: 10px 30px; font-size: clamp(14px, 3.5vw, 18px); border-radius: 10px; border: none; background: #555; color: white; cursor: pointer; width: 92%; max-width: 200px; min-height: 44px; }
+@keyframes atkPlayer { 0% { transform: translateX(0); } 50% { transform: translateX(40px); } 100% { transform: translateX(0); } }
+@keyframes atkEnemy { 0% { transform: translateX(0); } 50% { transform: translateX(-40px); } 100% { transform: translateX(0); } }
+@keyframes dmgShake { 0%, 100% { transform: translateX(0); filter: brightness(1); } 25% { transform: translateX(-8px) rotate(-10deg); filter: brightness(2) drop-shadow(0 0 15px red); } 75% { transform: translateX(8px) rotate(10deg); } }
+@keyframes critShake { 0%, 100% { transform: translateX(0) scale(1); filter: brightness(1); } 20% { transform: translateX(-15px) scale(1.1); filter: brightness(3) sepia(1) hue-rotate(-50deg); } 80% { transform: translateX(15px) scale(1.1); } }
+@keyframes dodgeAnim { 0%, 100% { transform: translateY(0); opacity:1; } 50% { transform: translateY(-35px); opacity:0.4; } }
+@keyframes deathAnim { to { transform: scale(0) rotate(180deg); opacity: 0; filter: grayscale(1); } }
+.anim-p-atk { animation: atkPlayer 0.3s ease-out; }
+.anim-e-atk { animation: atkEnemy 0.3s ease-out; }
+.anim-dmg { animation: dmgShake 0.3s ease-in-out; }
+.anim-crit { animation: critShake 0.4s ease-in-out; }
+.anim-dodge { animation: dodgeAnim 0.4s ease; }
+.anim-death { animation: deathAnim 0.6s forwards ease-in; }
+.dungeon-cell { width: clamp(44px, 11vw, 55px); height: clamp(44px, 11vw, 55px); border: 2px solid #444; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: clamp(18px, 5vw, 25px); cursor: pointer; transition: 0.2s; background: #222; }
+.dungeon-cell:hover { filter: brightness(1.5); transform: scale(1.05); }
+#inventoryContent { background: #222; padding: clamp(14px, 3vw, 25px); border-radius: 20px; text-align: center; width: min(480px, 96vw); max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.invTabBtns { display: flex; justify-content: center; margin-bottom: 14px; gap: 6px; flex-wrap: wrap; }
+.invTabBtns button { padding: 9px 12px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: clamp(11px, 3vw, 14px); min-height: 40px; flex: 1; min-width: 60px; }
+.invTabBtns button.active { background: #00aaff; font-weight: bold; }
+.craft-card { background: #111; border: 1px solid #444; border-radius: 10px; padding: 15px; margin-bottom: 10px; text-align: left; }
+.craft-card h3 { margin: 0 0 5px 0; color: #00ff66; font-size: 18px; }
+.craft-card p { margin: 5px 0; font-size: 14px; color: #ccc; }
+.craft-cost { color: gold; font-weight: bold; font-size: 13px; }
+.craft-btn { width: 100%; padding: 8px; margin-top: 8px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.btn-c-craft { background: #00aaff; color: white; }
+.btn-c-equip { background: #333; color: white; border: 1px solid #777; }
+.btn-c-equipped { background: #00ff66; color: black; cursor: default; }
+#inventoryContent button.closeBtn { margin-top: 20px; padding: 10px 30px; cursor: pointer; background: #aa0000; color: white; border: none; border-radius: 8px; }
+#mapListContainer { max-height: 60vh; overflow-y: auto; width: 100%; display: flex; flex-direction: column; align-items: center; padding: 10px; }
+.map-card { width: min(380px, 92vw); margin: 8px auto; padding: 16px 20px; border: none; border-radius: 18px; font-size: clamp(14px, 4vw, 20px); color: white; text-align: center; box-shadow: 0 0 15px rgba(255,255,255,0.1); opacity: 0.5; cursor: not-allowed; }
+.map-unlocked { opacity: 1 !important; cursor: pointer !important; }
+.map-unlocked:hover { transform: scale(1.03); }
+.map-deserto { background: linear-gradient(45deg, #5c4a24, #8c7137); }
+.map-floresta { background: linear-gradient(45deg, #1d4d1d, #2d7d2d); }
+.map-inferno { background: linear-gradient(45deg, #4d0b0b, #8a1414); }
+.map-espaco { background: linear-gradient(45deg, #150a3a, #2a1475); }
+.map-heavenhell { background: linear-gradient(135deg, #0d1b3e 0%, #3e0d0d 100%); border: 2px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
+.mapCloseButton { margin-top: 16px; padding: 14px 36px; border: none; border-radius: 16px; background: linear-gradient(45deg, #aa0000, #ff3333); color: white; font-size: clamp(16px, 4vw, 22px); cursor: pointer; min-height: 50px; }
+#shopMenu { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.97); z-index: 3000; display: none; }
+#shopContainer { display: flex; width: 100%; height: 100%; flex-direction: column; }
+#shopTabs { width: 100%; background: #111; display: flex; flex-direction: row; flex-wrap: wrap; padding: 10px; gap: 6px; overflow-y: visible; justify-content: center; }
+.shopTab { flex: 1; min-width: 70px; padding: 12px 10px; margin: 0; border: none; border-radius: 12px; background: #222; color: white; font-size: clamp(13px, 3.5vw, 18px); cursor: pointer; transition: 0.2s; text-align: center; }
+.shopTab.active { background: linear-gradient(45deg, #00aaff, #0055ff); }
+#shopContent { flex: 1; display: flex; justify-content: flex-start; align-items: center; flex-direction: column; overflow-y: auto; padding: clamp(10px, 3vw, 20px); -webkit-overflow-scrolling: touch; }
+.shopPage { display: none; width: 100%; text-align: center; }
+.shopPage.active { display: block; }
+.shopPage button { width: min(340px, 92vw); padding: clamp(12px, 3vw, 20px); margin: 8px auto; border: none; border-radius: 14px; font-size: clamp(16px, 4vw, 22px); cursor: pointer; display: block; min-height: 52px; }
+.normalButton { background: #222; color: white; transition: 0.2s; }
+.normalButton:hover { background: #333; }
+.rebirthButton { background: linear-gradient(45deg, gold, orange); color: black; font-size: clamp(20px, 5vw, 28px); font-weight: bold; height: auto; padding: 20px !important; box-shadow: 0 0 25px gold; transition: 0.2s; }
+.rebirthButton:hover { transform: scale(1.02); }
+.clickEffect { position: fixed; color: white; font-size: clamp(20px, 5vw, 28px); font-weight: bold; pointer-events: none; z-index: 1000; animation: floatCursor 0.8s forwards; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+@keyframes floatCursor { from { opacity: 1; transform: translateY(0px); } to { opacity: 0; transform: translateY(-70px); } }
+#criticalScreen { position: fixed; inset: 0; display: none; justify-content: center; align-items: center; flex-direction: column; z-index: 99998; pointer-events: none; }
+#criticalScreen .criticalTitle { font-size: clamp(50px, 14vw, 90px); font-weight: bold; color: #00ff66; text-shadow: 0 0 20px #00ff66, 0 0 50px #00ff66, -2px -2px 0 #000, 2px 2px 0 #000; }
+#criticalScreen .criticalGain { margin-top: 16px; font-size: clamp(26px, 7vw, 45px); color: white; text-shadow: 0 0 15px white, -2px -2px 0 #000, 2px 2px 0 #000; }
+#foundScreen { position: fixed; inset: 0; background: black; z-index: 99999; display: none; justify-content: center; align-items: center; flex-direction: column; text-align: center; }
+#foundScreen .skull { font-size: clamp(60px, 18vw, 120px); margin-bottom: 16px; }
+#foundScreen .redText { color: red; font-size: clamp(28px, 8vw, 55px); font-weight: bold; margin-bottom: 16px; }
+#foundScreen .whiteText { color: white; font-size: clamp(18px, 5vw, 32px); }
+.skins-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding: 12px; max-height: 55vh; overflow-y: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+.skin-card { background: #161616; border-radius: 16px; padding: 12px; width: clamp(130px, 40vw, 165px); display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; position: relative; transition: transform 0.2s; }
+.skin-card:hover { transform: scale(1.02); }
+.border-comum { border: 2.5px solid #777777; }
+.border-raro { border: 2.5px solid #00aaff; box-shadow: 0 0 10px rgba(0, 170, 255, 0.2); }
+.border-epico { border: 2.5px solid #aa00ff; box-shadow: 0 0 12px rgba(170, 0, 255, 0.25); }
+.border-lendario { border: 2.5px solid #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+.border-mitico { border: 2.5px solid #ff0055; box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); }
+.skin-preview { width: 75px; height: 75px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 38px; margin: 10px 0; overflow:hidden; }
+.skin-name { font-weight: bold; font-size: 15px; color: #fff; }
+.skin-mult { color: #00ff66 !important; font-weight: bold !important; font-size: 13px !important; margin-top: 4px !important; display: block !important; }
+.skin-price { color: gold !important; font-weight: bold !important; font-size: 13px !important; margin: 4px 0 0 0 !important; display: block !important; }
+.skin-btn { width: 120px !important; max-width: 100% !important; height: auto !important; padding: 8px 0 !important; margin: 10px auto 0 auto !important; display: block !important; border: none !important; border-radius: 8px !important; cursor: pointer !important; font-weight: bold !important; font-size: 12px !important; }
+.btn-buy { background: linear-gradient(45deg, #0055ff, #00aaff); color: white; }
+.btn-equip { background: #333; color: white; border: 1px solid #555; }
+.btn-equipped { background: #00ff66; color: black; cursor: default; }
+@media(max-width: 768px){
+    #ball { top: calc(50% - 60px); }
+    .gameButton { display: none !important; }
+    #musicControls { top: auto; bottom: 80px; right: 12px; background: rgba(0,0,0,0.8); }
+    .musicBtn { font-size: 16px; padding: 8px 12px; }
+    #mobileNav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        background: rgba(15,15,15,0.97);
+        border-top: 1px solid #333;
+        z-index: 100;
+        padding: 6px 4px;
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+        gap: 2px;
+        justify-content: space-around;
+        align-items: stretch;
+    }
+    .mobileNavBtn {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 2px;
+        border-radius: 10px;
+        transition: background 0.15s;
+        min-width: 0;
+        gap: 2px;
+    }
+    .mobileNavBtn span.nav-label {
+        font-size: 9px;
+        color: #aaa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    .mobileNavBtn:active { background: rgba(255,255,255,0.1); }
+    .mobileNavBtn.nav-adventure { color: #ff4477; }
+    .mobileNavBtn.nav-shop { color: #00aaff; }
+    .mobileNavBtn.nav-records { color: #9b30ff; }
+    .mobileNavBtn.nav-achieve { color: #ffcc00; }
+    #mobileMore {
+        display: none;
+        position: fixed;
+        bottom: 70px; left: 0; right: 0;
+        background: rgba(20,20,20,0.98);
+        border-top: 1px solid #333;
+        z-index: 99;
+        padding: 10px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+    #mobileMore.open { display: flex; }
+    .mobileMoreBtn {
+        flex: 1;
+        min-width: 100px;
+        border: 1px solid #444;
+        background: #222;
+        color: white;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 13px;
+        cursor: pointer;
+        text-align: center;
+    }
+    #mobileMoreResetBtn {
+        background: linear-gradient(45deg,#550000,#990000);
+        border-color: #880000;
+    }
+    #score { font-size: 17px; top: 10px; }
+    #multiplierText { font-size: 13px; top: 34px; }
+    #activeBuffDisplay { font-size: 11px; top: 55px; }
+    #shopContainer { flex-direction: column; }
+    #shopTabs { flex-direction: row; flex-wrap: wrap; gap: 5px; padding: 8px; }
+    .shopTab { font-size: 12px; padding: 9px 6px; }
+    #shopContent { padding: 10px; }
+    .popupMenu { padding: 10px 8px; justify-content: flex-start; padding-top: 16px; }
+    #inventoryContent { max-height: 88vh; padding: 14px 12px; width: 98vw; }
+    .recordsContainer { width: 98vw; max-height: 88vh; }
+    .recordsTabs { flex-wrap: wrap; gap: 4px; }
+    .recordsTabBtn { padding: 7px 9px; font-size: 11px; }
+    .recordsContent { max-height: 46vh; }
+    #adventureMenu { justify-content: flex-start; padding-top: 20px; }
+    #adventureMenu h1 { font-size: 22px; margin-bottom: 10px; }
+    #combatScreen { justify-content: flex-start; padding-top: 14px; }
+    #combatScreen h1 { font-size: 22px; }
+    #combatScreen h3 { font-size: 14px; }
+    .combat-area { margin-top: 10px; gap: 12px; }
+    .combat-entity h2 { font-size: 14px; }
+    .combat-stats { font-size: 13px; }
+    #dungeonGrid { grid-template-columns: repeat(5, clamp(38px, 9vw, 50px)); gap: 4px; margin: 12px auto; }
+    .dungeon-cell { width: clamp(38px, 9vw, 50px); height: clamp(38px, 9vw, 50px); font-size: clamp(14px, 4vw, 20px); }
+    .skin-card { width: calc(50% - 8px); max-width: none; }
+    .skins-grid { gap: 8px; padding: 8px; }
+    #mapListContainer { padding: 6px; }
+    .map-card { font-size: 14px; padding: 14px; margin: 6px auto; }
+    #adventureMenu button { font-size: 16px !important; padding: 14px !important; margin-bottom: 10px !important; }
+    #towerSelectionMenu button { font-size: 15px !important; padding: 12px !important; }
+    .craft-card { padding: 12px; }
+    .craft-card h3 { font-size: 15px; }
+    .craft-btn { font-size: 13px; }
+    #storyScreen { justify-content: flex-start; padding-top: 16px; }
+    #storyScreen h1 { font-size: 20px; }
+    #storyTextDesc { font-size: 15px; margin-bottom: 16px; }
+    #endingScreen h1 { font-size: 28px !important; }
+    #endingScreen p { font-size: 16px !important; }
+    #theEndScreen h1 { font-size: 50px !important; }
+    #achievementsContent { width: 98vw !important; padding: 16px 12px !important; max-height: 88vh !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="menu">
+    <div class="menuDecoration" style="top:10%;left:10%;">⚔️</div>
+    <div class="menuDecoration" style="top:20%;right:15%;">🐀</div>
+    <div class="menuDecoration" style="bottom:15%;left:20%;">💎</div>
+    <div class="menuDecoration" style="bottom:10%;right:10%;">🪽</div>
+    <h1>StruBall</h1>
+    <button onclick="startGame()">▶ PLAY</button>
+</div>
+
+<div id="modeScreen">
+    <h1>ESCOLHA SEU DESTINO</h1>
+    <p style="color:#aaa; font-size:18px; text-align:center; margin-bottom:30px;">Qual será a sua jornada?</p>
+    <button onclick="selectMode(false)" style="background: linear-gradient(45deg, #00aaff, #0055ff);">🌍 MODO NORMAL</button>
+    <button onclick="selectMode(true)" style="background: linear-gradient(45deg, #aa0000, #ff3333); box-shadow: 0 0 20px #ff0000;">💀 ALMA DE FERRO (Permadeath)</button>
+    <p style="color:#ff5555; font-size:14px; text-align:center; max-width:400px; margin-top:20px;">Aviso: No modo Alma de Ferro, se você for derrotado em combate, seu progresso será completamente apagado para sempre!</p>
+</div>
+
+<div id="loading">
+    <h1>CARREGANDO...</h1>
+    <div id="loadingBar"><div id="loadingFill"></div></div>
+</div>
+
+<div id="musicControls" style="display:none;">
+    <button id="playMusicBtn" class="musicBtn" onclick="toggleMusic()">🔊</button>
+    <button id="volumeDownBtn" class="musicBtn" onclick="volumeDown()">🔉</button>
+    <button id="volumeUpBtn" class="musicBtn" onclick="volumeUp()">🔊+</button>
+</div>
+
+<nav id="mobileNav" style="display:none;">
+    <button class="mobileNavBtn nav-adventure" onclick="toggleMenu('adventureMenu', true)">
+        ⚔️<span class="nav-label">Aventura</span>
+    </button>
+    <button class="mobileNavBtn nav-shop" onclick="openShop()">
+        🛒<span class="nav-label">Loja</span>
+    </button>
+    <button class="mobileNavBtn" onclick="toggleMenu('inventoryMenu', true)">
+        🎒<span class="nav-label">Inventário</span>
+    </button>
+    <button class="mobileNavBtn nav-records" onclick="toggleMenu('recordsMenu', true)">
+        📊<span class="nav-label">Registros</span>
+    </button>
+    <button class="mobileNavBtn nav-achieve" onclick="toggleMenu('achievementsMenu', true)">
+        🏆<span class="nav-label">Conquistas</span>
+    </button>
+    <button class="mobileNavBtn" onclick="toggleMobileMore()">
+        ⋯<span class="nav-label">Mais</span>
+    </button>
+</nav>
+
+<div id="mobileMore">
+    <button class="mobileMoreBtn" onclick="toggleMenu('mapMenu', true);toggleMobileMore()">🗺️ Mapas</button>
+    <button class="mobileMoreBtn mobileMoreResetBtn" onclick="resetGame(false);toggleMobileMore()">⚠️ Resetar Save</button>
+</div>
+
+<div id="gameUI">
+    <div id="ironSoulDisplay" class="ironSoulBadge" style="display:none;">💀 ALMA DE FERRO</div>
+    <div id="score">StruPoints: 0</div>
+    <div id="multiplierText">Multiplicador: x1 | Rebirths: 0</div>
+    <div id="activeBuffDisplay"></div>
+    <button id="openAdventure" class="gameButton" onclick="toggleMenu('adventureMenu', true)">⚔️ Aventura</button>
+    <button id="openInventory" class="gameButton" onclick="toggleMenu('inventoryMenu', true)">🎒 Inventário</button>
+    <button id="openMap" class="gameButton" onclick="toggleMenu('mapMenu', true)">🗺️ Mapas</button>
+    <button id="openRecords" class="gameButton" onclick="toggleMenu('recordsMenu', true)">📊 Registros</button>
+    <button id="openShop" class="gameButton" onclick="openShop()">🛒 Loja</button>
+    <button id="openAchievements" class="gameButton" onclick="toggleMenu('achievementsMenu', true)">🏆 Conquistas</button>
+    <button id="resetButton" class="gameButton" onclick="resetGame(false)">⚠️ Resetar Save</button>
+    <div id="ball"><div id="rat"></div><div id="equippedItemVisual"></div></div>
+</div>
+
+<div id="recordsMenu" class="popupMenu"><div class="recordsContainer"><div class="recordsHeader"><h2>📊 REGISTROS DO JOGADOR</h2></div><div class="recordsTabs"><button class="recordsTabBtn active" onclick="switchRecordsTab('stats')">📈 Estatísticas</button><button class="recordsTabBtn" onclick="switchRecordsTab('bestiary')">📖 Bestiário</button><button class="recordsTabBtn" onclick="switchRecordsTab('encyclopedia')">📚 Enciclopédia</button><button class="recordsTabBtn" onclick="switchRecordsTab('titles')">🏅 Títulos</button><button class="recordsTabBtn" onclick="switchRecordsTab('achievements')">🏆 Conquistas</button></div><div class="recordsContent"><div id="recordsStats" class="tabPane active"><div id="statsListContainer"></div></div><div id="recordsBestiary" class="tabPane"><div id="bestiaryListContainer"></div></div><div id="recordsEncyclopedia" class="tabPane"><div id="encyclopediaListContainer"></div></div><div id="recordsTitles" class="tabPane"><div id="titlesListContainer"></div></div><div id="recordsAchievements" class="tabPane"><div id="achievementsListContainerRecords"></div></div></div><button class="recordsCloseBtn" onclick="toggleMenu('recordsMenu', false)">FECHAR</button></div></div>
+
+<div id="achievementsMenu" class="popupMenu"><div id="achievementsContent" style="background:#222;padding:25px;border-radius:20px;text-align:center;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto;border:2px solid gold;"><h1 style="color:gold;text-shadow:0 0 10px gold;margin-top:0;">🏆 CONQUISTAS</h1><p style="color:#ccc;font-size:14px;margin-bottom:20px;">Prove o seu valor multiversal.</p><div id="achievementsListContainer" style="display:flex;flex-direction:column;gap:10px;"></div><button class="closeBtn" onclick="toggleMenu('achievementsMenu', false)" style="margin-top:20px;padding:10px 30px;background:#aa0000;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">FECHAR</button></div></div>
+
+<div id="adventureMenu" class="popupMenu"><h1 style="color:#00aaff;font-size:40px;font-family:'Orbitron',sans-serif;text-align:center;margin-bottom:20px;">MODOS DE JOGO</h1><p style="color:#ccc;text-align:center;margin-bottom:30px;font-size:16px;">Selecione o desafio que deseja enfrentar:</p><button class="normalButton" style="width:340px;max-width:90vw;padding:20px;font-size:20px;border-radius:14px;margin-bottom:15px;border-left:5px solid #00aaff;" onclick="startNormalCombat()">💥 Combate de Bioma<br><span style="font-size:12px;color:#aaa;">Lutas infinitas por StruPoints puros</span></button><button class="normalButton" style="width:340px;max-width:90vw;padding:20px;font-size:20px;border-radius:14px;margin-bottom:15px;background:linear-gradient(45deg,#4400aa,#aa00ff);text-shadow:0 0 5px #fff;" onclick="startInfiniteCombat()">🌌 Modo Infinito (Waves)<br><span style="font-size:12px;color:#ddd;">Inimigos escaláveis & Grandes Recompensas</span></button><button class="normalButton" style="width:340px;max-width:90vw;padding:20px;font-size:20px;border-radius:14px;margin-bottom:15px;border-left:5px solid #fff;background:linear-gradient(45deg,#444,#222);" onclick="openTowerSelection()">🏰 Torre do Bioma<br><span style="font-size:12px;color:#aaa;">Exploração, Chefe de Bioma & Artefatos</span></button><button class="normalButton" style="width:340px;max-width:90vw;padding:20px;font-size:20px;border-radius:14px;margin-bottom:30px;border-left:5px solid #ffcc00;" onclick="toggleMenu('storyScreen', true)">📜 Modo História<br><span id="adventureStoryLevelText" style="font-size:12px;color:#aaa;">Fase 1</span></button><button class="mapCloseButton" onclick="toggleMenu('adventureMenu', false)">VOLTAR</button></div>
+
+<div id="towerSelectionMenu" class="popupMenu"><h1 style="color:#00aaff;font-family:'Orbitron',sans-serif;">TORRE MISTERIOSA</h1><p style="color:#ccc;margin-bottom:20px;text-align:center;">As chances de obter <b style="color:gold;">Artefatos</b> dependem da sua ousadia.</p><button class="normalButton" style="width:300px;padding:15px;margin-bottom:10px;font-size:18px;" onclick="generateDungeon(1)">🟢 Fácil (Inimigos Fracos)</button><button class="normalButton" style="width:300px;padding:15px;margin-bottom:10px;font-size:18px;border-left:3px solid yellow;" onclick="generateDungeon(2)">🟡 Média (Inimigos Equilibrados)</button><button class="normalButton" style="width:300px;padding:15px;margin-bottom:20px;font-size:18px;border-left:3px solid red;" onclick="generateDungeon(3)">🔴 Difícil (Altos Riscos & Recompensas)</button><button class="mapCloseButton" onclick="toggleMenu('towerSelectionMenu', false)">CANCELAR</button></div>
+
+<div id="dungeonUI" class="popupMenu"><h1 style="color:#00aaff;font-family:'Orbitron',sans-serif;">TORRE: <span id="biomeNameUI"></span></h1><div id="dungeonGrid" style="display:grid;grid-template-columns:repeat(5,55px);gap:5px;justify-content:center;margin:20px;"></div><p id="dungeonLog" style="color:white;font-size:18px;max-width:400px;text-align:center;background:#222;padding:10px;border-radius:10px;border:1px solid #555;">Você entra na torre...</p><button class="mapCloseButton" style="background:#555;" onclick="exitDungeon()">FUGIR DA TORRE</button></div>
+
+<div id="storyScreen" class="popupMenu"><h1 id="storyScreenTitle" style="color:#00aaff;font-size:30px;text-align:center;font-family:'Orbitron',sans-serif;">1 - A Jornada</h1><div style="display:flex;justify-content:center;align-items:center;gap:30px;margin:30px 0;"><div id="storyPlayerBall" class="combat-ball"></div><div style="font-size:30px;font-weight:bold;color:white;">VS</div><div id="storyEnemyBall" class="combat-ball" style="background:#8a1414;">👹</div></div><p id="storyTextDesc" style="color:#ccc;font-size:18px;text-align:center;max-width:500px;margin-bottom:30px;line-height:1.5;"></p><button class="attack-btn" onclick="startStoryCombat()">LUTAR ⚔️</button><button class="mapCloseButton" style="margin-top:15px;background:#555;" onclick="toggleMenu('storyScreen', false)">RETORNAR</button></div>
+
+<div id="endingScreen" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0000;color:white;z-index:99999;flex-direction:column;justify-content:center;align-items:center;padding:20px;text-align:center;"><h1 style="color:#ff3333;font-size:50px;font-family:'Orbitron',sans-serif;text-shadow:0 0 20px red;">IKARO FOI DERROTADO...</h1><p style="font-size:22px;max-width:700px;line-height:1.8;color:#ccc;margin:30px 0;">"Não... Impossível! Eu deveria ser imparável! NÃO!!!"<br><br>Ikaro, derrotado, desaparece, deixando para trás todos os dez Orbes de StruPower. Você finalmente conseguiu juntar todos eles! Com o poder deles em mãos, você decide que precisa deixar pra trás um legado tão lendário quanto o de Ikaro.</p><button class="attack-btn" style="background:linear-gradient(45deg,#aa0000,#ff0000);box-shadow:0 0 20px red;width:auto;padding:20px 60px;" onclick="finishGame()">CONTINUAR</button></div>
+
+<div id="theEndScreen" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:black;color:white;z-index:100000;flex-direction:column;justify-content:center;align-items:center;"><h1 style="font-size:100px;font-family:'Orbitron',sans-serif;letter-spacing:10px;color:white;text-shadow:0 0 30px white;">O FIM</h1><button style="padding:15px 40px;font-size:20px;background:#222;color:white;border:1px solid #555;border-radius:10px;margin-top:40px;cursor:pointer;" onclick="returnToTitle()">VOLTAR AO JOGO</button></div>
+
+<div id="combatScreen" class="popupMenu"><h1 id="combatTitle" style="color:#00aaff;font-size:36px;margin-bottom:5px;font-family:'Orbitron',sans-serif;">BATALHA</h1><h3 id="combatSubTitle" style="color:#ccc;margin-top:0;">Oponente de: Padrão</h3><div class="combat-area"><div class="combat-entity"><h2 style="margin-bottom:5px;font-size:18px;">Você</h2><div id="combatPlayerBall" class="combat-ball"><div id="combatPlayerItemVisual" style="position:absolute;top:0;right:0;font-size:25px;filter:drop-shadow(0 0 5px black);"></div></div><div class="combat-health-bg"><div id="playerHpBar" class="combat-health-fill"></div></div><div id="playerHpText" class="combat-stats">HP: 100/100</div><div id="playerDmgText" style="color:#ffcc00;font-size:13px;margin-top:5px;">Dano: 20</div></div><div style="font-size:30px;font-weight:bold;color:white;">VS</div><div class="combat-entity"><h2 id="enemyTitle" style="margin-bottom:5px;color:#ff3333;font-size:18px;">Oponente</h2><div id="combatEnemyBall" class="combat-ball" style="background:#333;">💀</div><div class="combat-health-bg"><div id="enemyHpBar" class="combat-health-fill enemy-hp-fill"></div></div><div id="enemyHpText" class="combat-stats">HP: 50/50</div><div id="enemyDmgText" style="color:#ffcc00;font-size:13px;margin-top:5px;">Dano: 10</div></div></div><div id="combatLog"></div><button id="attackBtn" class="attack-btn" onclick="executeCombatTurn()">ATACAR ⚔️</button><button id="nextWaveBtn" class="attack-btn" style="display:none;background:linear-gradient(45deg,#00ff66,#00aa44);box-shadow:0 0 15px #00ff66;color:black;">PRÓXIMA WAVE ➡️</button><button class="flee-btn" onclick="fleeCombat()">Fugir / Sair</button></div>
+
+<div id="criticalScreen"><div class="criticalTitle">CRÍTICO</div><div class="criticalGain" id="criticalGainText">+0 StruPoints</div></div>
+<div id="foundScreen"><div class="skull">💀</div><div class="redText" id="foundLossTitleText">VOCÊ FOI ENCONTRADO!</div><div class="whiteText" id="foundLossText">Você perdeu 0 StruPoints</div></div>
+
+<div id="inventoryMenu" class="popupMenu"><div id="inventoryContent"><h1>🎒 INVENTÁRIO</h1><div class="invTabBtns"><button id="btnInvStats" class="active" onclick="switchInv('stats')">Status Bola</button><button id="btnInvCraft" onclick="switchInv('craft')">Crafting Itens</button><button id="btnInvPotions" onclick="switchInv('potions')">🧪 Poções</button><button id="btnInvArtifacts" onclick="switchInv('artifacts')">🏺 Artefatos</button></div><div id="invStatsTab"><p id="inventoryText">Nenhum item especial equipado.</p></div><div id="invCraftTab" style="display:none;"><div style="background:#1a1a1a;padding:10px;border-radius:8px;margin-bottom:15px;border:1px solid #444;"><h3 style="margin:0 0 10px 0;color:#ffcc00;font-size:16px;">Seus Materiais:</h3><div id="materialsList" style="font-size:13px;color:#ccc;text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:5px;"></div></div><div id="craftingListContainer"></div></div><div id="invPotionsTab" style="display:none;"><div style="background:#1a1a1a;padding:10px;border-radius:8px;margin-bottom:15px;border:1px solid #444;"><h3 style="margin:0 0 5px 0;color:#00e5ff;font-size:16px;">Alquimia de Buffs</h3><p style="font-size:12px;color:#aaa;margin:0 0 5px 0;">Use seus materiais de biomas para fabricar poções de Multiplicador Temporário.</p></div><div id="potionsListContainer"></div></div><div id="invArtifactsTab" style="display:none;"><div style="background:#1a1a1a;padding:10px;border-radius:8px;margin-bottom:15px;border:1px solid #444;"><h3 style="margin:0 0 5px 0;color:#ffd700;font-size:16px;">Artefatos da Torre</h3><p style="font-size:12px;color:#aaa;margin:0 0 5px 0;">Equipe até 3 artefatos para obter bônus absurdos de combate.</p></div><div id="artifactsListContainer"></div></div><button class="closeBtn" onclick="toggleMenu('inventoryMenu', false)">FECHAR</button></div></div>
+
+<div id="mapMenu" class="popupMenu"><h1>🗺️ MAPAS POR REBIRTHS</h1><div id="mapListContainer"><button id="btn-map-desert" class="map-card map-deserto" onclick="selectMap('desert')">🏜️ DESERTO<br>+5.0x Multiplicador<br><span class="map-price-label" id="label-desert">Requer: 1 Rebirth</span></button><button id="btn-map-forest" class="map-card map-floresta" onclick="selectMap('forest')">🌲 FLORESTA DO SR LOBO<br>+15.0x Multiplicador<br><span class="map-price-label" id="label-forest">Requer: 3 Rebirths</span></button><button id="btn-map-hell" class="map-card map-inferno" onclick="selectMap('hell')">🔥 VERDADEIRO INFERNO<br>+45.0x Multiplicador<br><span class="map-price-label" id="label-hell">Requer: 7 Rebirths</span></button><button id="btn-map-space" class="map-card map-espaco" onclick="selectMap('space')">🌌 DIMENSÃO DOS DERROTADOS<br>+120.0x Multiplicador<br><span class="map-price-label" id="label-space">Requer: 12 Rebirths</span></button><button id="btn-map-heavenhell" class="map-card map-heavenhell" onclick="selectMap('heavenhell')">👼 VERDADEIRO CÉU E INFERNO 🔥<br>+400.0x Multiplicador<br><span class="map-price-label" id="label-heavenhell">Requer: 20 Rebirths</span></button></div><button class="mapCloseButton" onclick="toggleMenu('mapMenu', false)">FECHAR</button></div>
+
+<div id="shopMenu" class="popupMenu"><div id="shopContainer"><div id="shopTabs"><button class="shopTab active" onclick="showShopPage('upgrades',this)">⚡ UPGRADES</button><button class="shopTab" onclick="showShopPage('custom',this)">🎨 CUSTOM</button><button class="shopTab" onclick="showShopPage('training',this)">🏋️ TREINO</button><button class="shopTab" onclick="showShopPage('rebirth',this)">🪽 REBIRTH</button><button class="shopTab" onclick="closeShop()">❌ FECHAR</button></div><div id="shopContent"><h1>🛒 LOJA</h1><h2 id="shopPoints">StruPoints: 0</h2><div id="upgrades" class="shopPage active"><button class="normalButton" id="multButton" onclick="buyMultiplier()">⚡ Multiplicador +1 (1000)</button><button class="normalButton" id="critButton" onclick="buyCritUpgrade()">💥 Chance Crítica +25 (500)</button></div><div id="custom" class="shopPage"><button class="normalButton" onclick="buyRandomColor()">🎨 Cor Aleatória (2000)</button><div class="skins-grid" id="skinsContainer"></div></div><div id="training" class="shopPage"><h3 style="color:#00ff66;">Melhore os Status de Combate da sua Bola</h3><button class="normalButton" id="btnBuyForca" onclick="buyForca()">💪 Força +1 (500 pts)</button><button class="normalButton" id="btnBuyConst" onclick="buyConst()">❤️ Constituição +1 (500 pts)</button><button class="normalButton" id="btnBuyPrec" onclick="buyPrec()">🎯 Precisão +0.1 (10000 pts)</button><button class="normalButton" id="btnBuyAgil" onclick="buyAgil()">🏃 Agilidade +0.1 (10000 pts)</button></div><div id="rebirth" class="shopPage"><button class="rebirthButton" id="rebirthButton" onclick="rebirth()">🪽 REBIRTH (100000)</button></div></div></div></div>
+
+<script>
+// ==================================================
+// SISTEMA DE MÚSICA - CORRIGIDO
+// ==================================================
+let currentAudio = null;
+let currentMusicType = "menu";
+let musicVolume = 0.5;
+let isMusicMuted = false;
+let keepBattleMusic = false; // Controla se a música de batalha deve continuar
+
+const battleMusicFiles = ["battle1.mp3", "battle2.mp3", "battle3.mp3"];
+
+const musicFiles = {
+    menu: "menu.mp3",
+    desert: "desert.mp3",
+    forest: "forest.mp3",
+    hell: "hell.mp3",
+    space: "space.mp3",
+    heavenhell: "heavenhell.mp3",
+    tower: "tower.mp3",
+    story: "story.mp3"
+};
+
+function playRandomBattleMusic() {
+    const randomIndex = Math.floor(Math.random() * battleMusicFiles.length);
+    const selectedMusic = battleMusicFiles[randomIndex];
+    
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
+    
+    try {
+        currentAudio = new Audio(selectedMusic);
+        currentAudio.loop = true;
+        currentAudio.volume = isMusicMuted ? 0 : musicVolume;
+        currentAudio.play().catch(e => console.log("Auto-play bloqueado:", e));
+        currentMusicType = "battle";
+    } catch(e) {
+        console.log("Erro ao carregar música de batalha:", e);
+    }
+}
+
+function playMusic(type) {
+    // Se estamos mantendo música de batalha e não é para parar, ignora
+    if (keepBattleMusic && type !== "battle" && currentMusicType === "battle") {
+        return;
+    }
+    
+    // Se for batalha e já está tocando batalha, não faz nada
+    if (type === "battle" && currentMusicType === "battle" && currentAudio && !currentAudio.paused) {
+        return;
+    }
+    
+    // Se for batalha, usa o sistema aleatório
+    if (type === "battle") {
+        playRandomBattleMusic();
+        return;
+    }
+    
+    if (currentMusicType === type && currentAudio && !currentAudio.paused) return;
+    
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
+    
+    const file = musicFiles[type];
+    if (!file) return;
+    
+    try {
+        currentAudio = new Audio(file);
+        currentAudio.loop = true;
+        currentAudio.volume = isMusicMuted ? 0 : musicVolume;
+        currentAudio.play().catch(e => console.log("Auto-play bloqueado:", e));
+        currentMusicType = type;
+    } catch(e) {
+        console.log("Erro ao carregar música:", e);
+    }
+}
+
+function stopMusic() {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
+    keepBattleMusic = false;
+}
+
+function toggleMusic() {
+    isMusicMuted = !isMusicMuted;
+    const btn = document.getElementById("playMusicBtn");
+    if (currentAudio) {
+        currentAudio.volume = isMusicMuted ? 0 : musicVolume;
+    }
+    if (btn) {
+        btn.innerHTML = isMusicMuted ? "🔇" : "🔊";
+        if (isMusicMuted) btn.classList.add("mute");
+        else btn.classList.remove("mute");
+    }
+}
+
+function volumeUp() {
+    musicVolume = Math.min(1, musicVolume + 0.1);
+    if (currentAudio && !isMusicMuted) currentAudio.volume = musicVolume;
+}
+
+function volumeDown() {
+    musicVolume = Math.max(0, musicVolume - 0.1);
+    if (currentAudio && !isMusicMuted) currentAudio.volume = musicVolume;
+}
+
+// ==================================================
+// VARIÁVEIS PRINCIPAIS
+// ==================================================
+let points = 0, multiplier = 1, permanentMultiplier = 0, multiplierPrice = 1000;
+let critChance = 10000, critUpgradePrice = 500, critUpgradeAmount = 25;
+let hasSave = false, ironSoulMode = false, autoSaveInterval, isResetting = false;
+let p_forca = 0, p_const = 0, p_prec = 0, p_agil = 0, cost_forca = 500, cost_const = 500, cost_prec = 10000, cost_agil = 10000;
+let rebirthCount = 1, rebirthPrice = 100000, totalClicks = 0, currentMap = "default";
+let achievements = [], artifacts = [], equippedArtifacts = [];
+let towerDifficulty = 1, dungeonMap = [], playerDungeonPos = {x: 2, y: 2}, storyLevel = 1, storySubWave = 1, dungeonRoomTarget = {x: 0, y: 0}, ikaroDefeated = false;
+let activeBuff = { multiplier: 1, duration: 0, name: "" }, inCombat = false, combatMode = "normal", infiniteWave = 1;
+let c_playerMaxHp, c_playerHp, c_playerDmg, c_enemyMaxHp, c_enemyHp, c_enemyDmg;
+let ownedSkins = ["default"], equippedSkin = "default", currentSkinMult = 0;
+let materials = { desert_gem: 0, sand_relic: 0, wolf_fang: 0, ancient_bark: 0, demon_horn: 0, hell_fire: 0, void_matter: 0, cosmic_dust: 0, dual_soul: 0, divine_tears: 0 };
+let craftedItems = [], equippedItem = null;
+
+// ==================================================
+// SISTEMA DE REGISTROS
+// ==================================================
+let playerStats = { totalClicks:0, totalDamageDealt:0, totalDamageTaken:0, totalBossesKilled:0, totalEnemiesKilled:0, totalRebirths:0, totalPotionsUsed:0, totalCrafts:0, highestInfiniteWave:0, highestTowerDifficulty:0, totalStruPointsEarned:0, totalMaterialsCollected:0, totalSkinsUnlocked:1, totalCombats:0 };
+let discoveredEnemies = [], discoveredMaterials = [], unlockedTitles = [];
+const trackStat = (statName, amount = 1) => { playerStats[statName] += amount; if (["totalRebirths", "totalSkinsUnlocked", "totalClicks", "totalEnemiesKilled", "totalBossesKilled", "totalCrafts"].includes(statName)) checkTitleUnlocks(); updateRecordsUI(); };
+
+const enemiesDatabase = [
+    { id: "bandit", name: "Bandido", baseHp: 50, baseDmg: 10, bioma: "default", emoji: "🗡️" },
+    { id: "sand_spirit", name: "Espírito de Areia", baseHp: 80, baseDmg: 15, bioma: "desert", emoji: "🌵" },
+    { id: "wolf", name: "Lobo Alfa", baseHp: 120, baseDmg: 20, bioma: "forest", emoji: "🐺" },
+    { id: "demon", name: "Demônio", baseHp: 200, baseDmg: 35, bioma: "hell", emoji: "😈" },
+    { id: "void_creature", name: "Criatura do Vazio", baseHp: 300, baseDmg: 50, bioma: "space", emoji: "🌌" },
+    { id: "fallen_angel", name: "Anjo Caído", baseHp: 500, baseDmg: 80, bioma: "heavenhell", emoji: "👼" },
+    { id: "ikaro", name: "Ikaro", baseHp: 1000, baseDmg: 150, bioma: "story", emoji: "👑" },
+    { id: "tyrone", name: "Tyrone DDD", baseHp: 2000, baseDmg: 200, bioma: "story", emoji: "🌀" },
+    { id: "skeleton", name: "Esqueleto", baseHp: 60, baseDmg: 12, bioma: "default", emoji: "💀" },
+    { id: "shadow", name: "Sombra da Torre", baseHp: 100, baseDmg: 18, bioma: "tower", emoji: "👻" }
+];
+
+const allMaterials = [
+    { id: "desert_gem", name: "Joia do Deserto", bioma: "desert", rarity: "comum" },
+    { id: "sand_relic", name: "Relíquia de Areia", bioma: "desert", rarity: "raro" },
+    { id: "wolf_fang", name: "Presa de Lobo", bioma: "forest", rarity: "comum" },
+    { id: "ancient_bark", name: "Casca Anciã", bioma: "forest", rarity: "raro" },
+    { id: "demon_horn", name: "Chifre Demoníaco", bioma: "hell", rarity: "comum" },
+    { id: "hell_fire", name: "Fogo do Inferno", bioma: "hell", rarity: "raro" },
+    { id: "void_matter", name: "Matéria do Vazio", bioma: "space", rarity: "comum" },
+    { id: "cosmic_dust", name: "Poeira Cósmica", bioma: "space", rarity: "raro" },
+    { id: "dual_soul", name: "Alma Dupla", bioma: "heavenhell", rarity: "epico" },
+    { id: "divine_tears", name: "Lágrimas Divinas", bioma: "heavenhell", rarity: "lendario" }
+];
+
+const titlesDatabase = [
+    { id: "novato", name: "Novato", desc: "Complete 10 combates" },
+    { id: "matador", name: "Matador", desc: "Derrote 100 inimigos" },
+    { id: "cacador", name: "Caçador", desc: "Derrote 10 chefes" },
+    { id: "renascido", name: "Renascido", desc: "Atinga 5 Rebirths" },
+    { id: "colecionador", name: "Colecionador", desc: "Adquira 5 skins" },
+    { id: "bilionario", name: "Bilionário", desc: "Ganhe 1 milhão de StruPoints" },
+    { id: "lendario", name: "Lendário", desc: "Complete o Modo História" },
+    { id: "suserano", name: "Suserano da Torre", desc: "Complete a Torre no difícil" },
+    { id: "imortal", name: "Imortal", desc: "Sobreviva no Alma de Ferro até o rebirth 12" },
+    { id: "clicker_master", name: "Mestre dos Cliques", desc: "Dê 100.000 cliques" },
+    { id: "forjador", name: "Forjador Lendário", desc: "Craft 50 itens" },
+    { id: "alquimista", name: "Alquimista Supremo", desc: "Use 30 poções" },
+    { id: "guerreiro_infinito", name: "Guerreiro Infinito", desc: "Atinga a Wave 50 no modo infinito" },
+    { id: "colecionador_artefatos", name: "Arqueólogo", desc: "Colete 15 artefatos" }
+];
+
+const titleConditions = {
+    novato: (c) => c.combatCount >= 10,
+    matador: (c) => c.enemiesKilled >= 100,
+    cacador: (c) => c.bossesKilled >= 10,
+    renascido: (c) => c.rebirths >= 5,
+    colecionador: (c) => c.skinsCount >= 5,
+    bilionario: (c) => c.totalPoints >= 1000000,
+    lendario: (c) => c.storyComplete,
+    suserano: (c) => c.towerHardComplete,
+    imortal: (c) => c.ironSoulSurvivor,
+    clicker_master: (c) => c.totalClicks >= 100000,
+    forjador: (c) => c.crafts >= 50,
+    alquimista: (c) => c.potionsUsed >= 30,
+    guerreiro_infinito: (c) => c.infiniteWave >= 50,
+    colecionador_artefatos: (c) => c.artifactsCount >= 15
+};
+
+const achievementsData = [
+    { id: "first_blood", name: "Primeiro Sangue", desc: "Derrote seu primeiro inimigo no modo aventura." },
+    { id: "story_mid", name: "A Jornada Ganhando Forma", desc: "Chegue até a Fase 5 do modo História." },
+    { id: "story_clear", name: "O Fim de uma Era", desc: "Derrote Ikaro no Modo História." },
+    { id: "tower_easy", name: "Explorador Iniciante", desc: "Complete a Torre na dificuldade Fácil." },
+    { id: "tower_hard", name: "Explorador Destemido", desc: "Complete a Torre na dificuldade Difícil." },
+    { id: "permadeath_survivor", name: "Vontade de Ferro", desc: "Faça 12 Rebirths no modo Alma de Ferro." },
+    { id: "million_clicks", name: "Milionário de Cliques", desc: "Dê 1.000.000 de cliques." },
+    { id: "wave_20", name: "Resistência Infinita", desc: "Atinga a Wave 20 no modo infinito." },
+    { id: "all_maps", name: "Explorador Multiversal", desc: "Desbloqueie todos os mapas." },
+    { id: "craft_master", name: "Mestre Artesão", desc: "Craft 20 itens diferentes." },
+    { id: "rich_player", name: "Acumulador", desc: "Tenha 10.000.000 de StruPoints acumulados." },
+    { id: "skin_collector", name: "Colecionador de Estilos", desc: "Desbloqueie 10 skins." },
+    { id: "potions_master", name: "Alquimista Experiente", desc: "Use 10 poções." },
+    { id: "tower_complete_all", name: "Conquistador da Torre", desc: "Complete a torre nas 3 dificuldades." },
+    { id: "boss_hunter", name: "Caçador de Chefes", desc: "Derrote 30 chefes." },
+    { id: "immortal_legend", name: "Lenda Imortal", desc: "Atinga o rebirth 30." }
+];
+
+function checkTitleUnlocks() {
+    let combatCount = playerStats.totalEnemiesKilled + playerStats.totalBossesKilled;
+    let conditions = { 
+        combatCount, enemiesKilled: playerStats.totalEnemiesKilled, bossesKilled: playerStats.totalBossesKilled,
+        rebirths: rebirthCount, skinsCount: ownedSkins.length, totalPoints: playerStats.totalStruPointsEarned,
+        storyComplete: (ikaroDefeated || storyLevel > 10), towerHardComplete: playerStats.highestTowerDifficulty >= 3,
+        ironSoulSurvivor: (ironSoulMode && rebirthCount >= 12),
+        totalClicks: playerStats.totalClicks,
+        crafts: playerStats.totalCrafts,
+        potionsUsed: playerStats.totalPotionsUsed,
+        infiniteWave: playerStats.highestInfiniteWave,
+        artifactsCount: artifacts.length
+    };
+    for(let title of titlesDatabase) if(!unlockedTitles.includes(title.id) && titleConditions[title.id] && titleConditions[title.id](conditions)) { unlockedTitles.push(title.id); console.log(`🏅 Título desbloqueado: ${title.name}`); }
+    updateRecordsUI();
+}
+
+function updateRecordsUI() { updateStatsUI(); updateBestiaryUI(); updateEncyclopediaUI(); updateTitlesUI(); updateAchievementsUIInRecords(); }
+function updateStatsUI() { const c = document.getElementById("statsListContainer"); if(!c) return; c.innerHTML = `<div class="statCard"><span class="statValue">${playerStats.totalClicks}</span><div class="statLabel">Total de Cliques</div></div><div class="statCard"><span class="statValue">${Math.floor(playerStats.totalDamageDealt)}</span><div class="statLabel">Dano Total Causado</div></div><div class="statCard"><span class="statValue">${Math.floor(playerStats.totalDamageTaken)}</span><div class="statLabel">Dano Total Recebido</div></div><div class="statCard"><span class="statValue">${playerStats.totalEnemiesKilled}</span><div class="statLabel">Inimigos Derrotados</div></div><div class="statCard"><span class="statValue">${playerStats.totalBossesKilled}</span><div class="statLabel">Chefes Derrotados</div></div><div class="statCard"><span class="statValue">${rebirthCount}</span><div class="statLabel">Rebirths</div></div><div class="statCard"><span class="statValue">${playerStats.totalPotionsUsed}</span><div class="statLabel">Poções Usadas</div></div><div class="statCard"><span class="statValue">${playerStats.totalCrafts}</span><div class="statLabel">Itens Craftados</div></div><div class="statCard"><span class="statValue">${playerStats.highestInfiniteWave}</span><div class="statLabel">Maior Wave Infinita</div></div><div class="statCard"><span class="statValue">${playerStats.highestTowerDifficulty === 0 ? "Nenhuma" : (playerStats.highestTowerDifficulty === 1 ? "Fácil" : playerStats.highestTowerDifficulty === 2 ? "Médio" : "Difícil")}</span><div class="statLabel">Maior Torre Completada</div></div><div class="statCard"><span class="statValue">${Math.floor(playerStats.totalStruPointsEarned)}</span><div class="statLabel">StruPoints Totais (estimado)</div></div><div class="statCard"><span class="statValue">${playerStats.totalMaterialsCollected}</span><div class="statLabel">Materiais Coletados</div></div><div class="statCard"><span class="statValue">${ownedSkins.length}/${skinsData.length}</span><div class="statLabel">Skins Desbloqueadas</div></div><div class="statCard"><span class="statValue">${artifacts.length}</span><div class="statLabel">Artefatos Coletados</div></div><div class="statCard"><span class="statValue">${craftedItems.length}</span><div class="statLabel">Itens Especiais</div></div><div class="statCard"><span class="statValue">${playerStats.totalCombats}</span><div class="statLabel">Total de Combates</div></div>`; }
+function updateBestiaryUI() { const c = document.getElementById("bestiaryListContainer"); if(!c) return; c.innerHTML = ""; for(let enemy of enemiesDatabase) { const d = discoveredEnemies.find(e => e.id === enemy.id); c.innerHTML += `<div class="enemyCard ${!d ? 'locked' : ''}"><div class="enemyName">${d ? enemy.emoji + " " + enemy.name : "???"}</div>${d ? `<div>❤️ HP: ${enemy.baseHp} | ⚔️ Dano: ${enemy.baseDmg}</div><div>📍 Bioma: ${enemy.bioma === "tower" ? "Torre" : enemy.bioma === "story" ? "História" : mapsData[enemy.bioma]?.name || enemy.bioma}</div><div>💀 Mortes: ${d.kills}</div>` : '<div style="color:#666;">❓ Não encontrado ainda</div>'}</div>`; } }
+function updateEncyclopediaUI() { const c = document.getElementById("encyclopediaListContainer"); if(!c) return; c.innerHTML = "<h3 style='color:#9b30ff;margin:0 0 10px 0;'>📦 Materiais</h3>"; for(let mat of allMaterials) { const d = discoveredMaterials.find(m => m.id === mat.id); const has = (materials[mat.id] || 0) > 0; c.innerHTML += `<div class="materialCard ${(!d && !has) ? 'locked' : ''}"><strong>${(d || has) ? mat.name : "???"}</strong>${(d || has) ? `<span style="color:gold;"> x${materials[mat.id] || 0}</span><br><small>📍 ${mat.bioma === "heavenhell" ? "Céu/Inferno" : mapsData[mat.bioma]?.name || mat.bioma} | ${mat.rarity}</small>` : '<span style="color:#666;">❓ Material desconhecido</span>'}</div>`; } c.innerHTML += "<h3 style='color:#9b30ff;margin:15px 0 10px 0;'>🗺️ Mapas Desbloqueados</h3>"; for(let mapId in mapsData) if(mapId !== "default") { const unlocked = rebirthCount >= mapsData[mapId].req; c.innerHTML += `<div class="materialCard ${!unlocked ? 'locked' : ''}"><strong>${unlocked ? mapsData[mapId].name : "???"}</strong>${unlocked ? `<br><small>+${mapsData[mapId].mult}x Mult | Requer ${mapsData[mapId].req} Rebirths</small>` : '<br><small>🔒 Bloqueado</small>'}</div>`; } }
+function updateTitlesUI() { const c = document.getElementById("titlesListContainer"); if(!c) return; c.innerHTML = ""; for(let title of titlesDatabase) { const unlocked = unlockedTitles.includes(title.id); c.innerHTML += `<div class="titleCard ${!unlocked ? 'locked' : ''}"><span class="titleBadge">${unlocked ? "🏅" : "🔒"}</span><strong>${unlocked ? title.name : "???"}</strong><br><small>${unlocked ? title.desc : "??? (Condição não atingida)"}</small></div>`; } }
+function updateAchievementsUIInRecords() { const c = document.getElementById("achievementsListContainerRecords"); if(!c) return; c.innerHTML = ""; achievementsData.forEach(ach => { let unlocked = achievements.includes(ach.id); c.innerHTML += `<div style="background:#111;border:1px solid ${unlocked ? 'gold' : '#444'};padding:12px;border-radius:10px;margin-bottom:8px;opacity:${unlocked ? '1' : '0.6'};"><div style="font-weight:bold;color:${unlocked ? 'gold' : '#888'};">${unlocked ? '🏆' : '🔒'} ${ach.name}</div><div style="font-size:12px;color:#ccc;">${unlocked ? ach.desc : '???'}</div></div>`; }); }
+function switchRecordsTab(tab) { document.querySelectorAll('#recordsMenu .tabPane').forEach(p => p.classList.remove('active')); document.querySelectorAll('#recordsMenu .recordsTabBtn').forEach(b => b.classList.remove('active')); const map = { stats:'recordsStats', bestiary:'recordsBestiary', encyclopedia:'recordsEncyclopedia', titles:'recordsTitles', achievements:'recordsAchievements' }; document.getElementById(map[tab]).classList.add('active'); event.target.classList.add('active'); }
+
+// ==================================================
+// DADOS ESTÁTICOS
+// ==================================================
+const mapsData = {
+    default: { name: "Padrão", mult: 0, req: 0, class: "", dropInfo: "Nenhum", drops: [], bossName: "Monstro Comum", music: "menu" },
+    desert: { name: "Deserto", mult: 5.0, req: 1, class: "desertTheme", emoji1: "🌵", emoji2: "🐍", bossName: "Guardião das Dunas", drops: [{ id: "desert_gem", name: "Joia do Deserto", chance: 0.40 }, { id: "sand_relic", name: "Relíquia de Areia", chance: 0.15 }], music: "desert" },
+    forest: { name: "Floresta do Sr Lobo", mult: 15.0, req: 3, class: "forestTheme", emoji1: "🌲", emoji2: "🐺", bossName: "Lobo Alfa Ancião", drops: [{ id: "wolf_fang", name: "Presa de Lobo", chance: 0.35 }, { id: "ancient_bark", name: "Casca Anciã", chance: 0.12 }], music: "forest" },
+    hell: { name: "Verdadeiro Inferno", mult: 45.0, req: 7, class: "hellTheme", emoji1: "🔥", emoji2: "😈", bossName: "Demônio Senhor do Fogo", drops: [{ id: "demon_horn", name: "Chifre Demoníaco", chance: 0.30 }, { id: "hell_fire", name: "Fogo do Inferno", chance: 0.10 }], music: "hell" },
+    space: { name: "Dimensão dos Derrotados", mult: 120.0, req: 12, class: "spaceTheme", emoji1: "🌌", emoji2: "💀", bossName: "Surgimento do Vazio", drops: [{ id: "void_matter", name: "Matéria do Vazio", chance: 0.25 }, { id: "cosmic_dust", name: "Poeira Cósmica", chance: 0.08 }], music: "space" },
+    heavenhell: { name: "Verdadeiro Céu e Inferno", mult: 400.0, req: 20, class: "heavenHellTheme", emoji1: "👼", emoji2: "🔥", bossName: "Querubim Caído Supremo", drops: [{ id: "dual_soul", name: "Alma Dupla", chance: 0.20 }, { id: "divine_tears", name: "Lágrimas Divinas", chance: 0.05 }], music: "heavenhell" }
+};
+
+const skinsData = [
+    { id: "default", name: "Padrão", mult: 0, price: 0, rarity: "comum", bg: "linear-gradient(145deg, #00aaff, #0055ff)", emoji: "", shadow: "0 0 40px #00aaff" },
+    { id: "rat", name: "Bola Rato", mult: 0.5, price: 10000, rarity: "comum", bg: "#222", emoji: "🐀", shadow: "none" },
+    { id: "ghost", name: "Fantasma", mult: 1.5, price: 25000, rarity: "raro", bg: "rgba(255,255,255,0.15)", emoji: "👻", shadow: "0 0 15px #ffffff" },
+    { id: "fogo_fatuo", name: "Fogo Fátuo", mult: 2.5, price: 35000, rarity: "raro", bg: "radial-gradient(circle, #00ffff, #0055aa)", emoji: "🔥", shadow: "0 0 20px #00ffff" },
+    { id: "neon_green", name: "Verde Neon", mult: 3.0, price: 50000, rarity: "raro", bg: "#00", emoji: "", shadow: "0 0 25px #00ff66", borderGlow: "#00ff66" },
+    { id: "pirate", name: "Pirata", mult: 5.5, price: 90000, rarity: "epico", bg: "#4a3319", emoji: "🏴‍☠️", shadow: "0 0 15px #ffcc00" },
+    { id: "lobo_metalico", name: "Lobo Metálico", mult: 7.0, price: 120000, rarity: "epico", bg: "linear-gradient(45deg, #777, #ccc)", emoji: "🐺", shadow: "0 0 20px #aaa" },
+    { id: "neon_pink", name: "Ciber Punk", mult: 8.0, price: 150000, rarity: "epico", bg: "#050505", emoji: "", shadow: "0 0 30px #ff0055", borderGlow: "#ff0055" },
+    { id: "coracao_dragao", name: "Coração de Dragão", mult: 10.0, price: 200000, rarity: "epico", bg: "radial-gradient(circle, #ff3300, #550000)", emoji: "🐉", shadow: "0 0 30px #ff0000", borderGlow: "#ff3300" },
+    { id: "cosmic", name: "Cosmo Neon", mult: 15.0, price: 300000, rarity: "lendario", bg: "radial-gradient(circle, #20003b, #050010)", emoji: "🌌", shadow: "0 0 35px #ffd700" },
+    { id: "divine", name: "Luz Divina", mult: 30.0, price: 600000, rarity: "lendario", bg: "linear-gradient(45deg, #fff, #ffeb3b)", emoji: "✨", shadow: "0 0 40px #fff" },
+    { id: "estrela_cadente", name: "Estrela Cadente", mult: 45.0, price: 1000000, rarity: "lendario", bg: "linear-gradient(45deg, #fff, #ffcc00, #fff)", emoji: "🌠", shadow: "0 0 40px #ffcc00" },
+    { id: "darkness", name: "Lorde Sombrio", mult: 60.0, price: 1500000, rarity: "lendario", bg: "#111", emoji: "🌑", shadow: "0 0 40px #4400aa", borderGlow: "#aa00ff" },
+    { id: "elemental", name: "Mestre Elemental", mult: 120.0, price: 4000000, rarity: "lendario", bg: "conic-gradient(red, blue, green, yellow, red)", emoji: "🌀", shadow: "0 0 50px #fff" },
+    { id: "time", name: "Orbe do Tempo", mult: 250.0, price: 10000000, rarity: "mitico", bg: "radial-gradient(circle, #00ffff, #000088)", emoji: "⏳", shadow: "0 0 50px #00ffff" },
+    { id: "buraco_negro", name: "Buraco Negro", mult: 400.0, price: 20000000, rarity: "mitico", bg: "radial-gradient(circle, #000, #111, #330066)", emoji: "🕳️", shadow: "0 0 80px #330066", borderGlow: "#5500aa" },
+    { id: "omnipresent", name: "O Onipresente", mult: 600.0, price: 30000000, rarity: "mitico", bg: "linear-gradient(45deg, #ffffff, #000000, #ffffff)", emoji: "👁️", shadow: "0 0 100px #ffffff", borderGlow: "#ffffff" },
+    { id: "susker", name: "Susker", mult: 50000.0, price: 1000000000000000, rarity: "mitico", bg: "#000", emoji: "", img: "IMG-20250806-WA0015_1__2-removebg-preview.png", shadow: "0 0 100px #ff0055", borderGlow: "#ff0055" }
+];
+
+const craftableItemsData = [
+    { id: "item_desert", name: "Amuleto Arenoso", type: "mult", power: 8, cost: { desert_gem: 5 }, desc: "+8.0x Mult Extra", icon: "🧿" },
+    { id: "item_forest", name: "Presa Sangrenta", type: "crit", power: 800, cost: { wolf_fang: 6 }, desc: "Melhora Acerto Crítico em Clicks", icon: "🦷" },
+    { id: "item_hell", name: "Marca Infernal", type: "mult", power: 65, cost: { demon_horn: 6 }, desc: "+65.0x Mult Extra", icon: "🔥" },
+    { id: "item_cross_desert_forest", name: "Anel de Âmbar Fóssil", type: "mult", power: 35, cost: { sand_relic: 3, ancient_bark: 3 }, desc: "Fusão: +35.0x Mult", icon: "💍" },
+    { id: "item_cross_hell_space", name: "Orbe Quântico Calcinado", type: "mult_crit", power: 180, critPower: 1500, cost: { hell_fire: 4, void_matter: 6 }, desc: "Fusão: +180x Mult & Crit", icon: "🔮" },
+    { id: "item_cross_ultimate", name: "Coroa do Caos Divino", type: "mult_stealth", power: 800, cost: { divine_tears: 4, cosmic_dust: 5, hell_fire: 5 }, desc: "Supremo: +800.0x Mult & Ocultação 💀", icon: "👑" }
+];
+
+const potionsData = [
+    { id: "pot_1", name: "Poção de Adrenalina Arenosa", cost: { desert_gem: 4, sand_relic: 1 }, mult: 2, duration: 300, desc: "Aumenta ganhos por 2x (5 Min)" },
+    { id: "pot_2", name: "Elixir Feral da Lua", cost: { wolf_fang: 5, ancient_bark: 2 }, mult: 3, duration: 180, desc: "Aumenta ganhos por 3x (3 Min)" },
+    { id: "pot_3", name: "Tônico de Fogo Absoluto", cost: { demon_horn: 6, hell_fire: 2 }, mult: 4, duration: 120, desc: "Aumenta ganhos por 4x (2 Min)" },
+    { id: "pot_4", name: "Soro de Fenda Cósmica", cost: { void_matter: 5, cosmic_dust: 3, divine_tears: 1 }, mult: 6, duration: 90, desc: "Aumenta ganhos por 6x (1.5 Min)" }
+];
+
+const possibleArtifacts = [
+    { id: "art_forca", name: "Anel do Gigante", effect: "Dano Fixo em combate +50", type: "dmg", val: 50 },
+    { id: "art_vida", name: "Coração de Troll", effect: "Vida Máxima em combate +200", type: "hp", val: 200 },
+    { id: "art_crit", name: "Lente de Atirador", effect: "Aumenta chance de crítico (+15%)", type: "crit", val: 0.15 },
+    { id: "art_agil", name: "Sapatos de Vento", effect: "Aumenta desvio (+15%)", type: "dodge", val: 0.15 }
+];
+
+const storyData = [
+    { text: "Há muito tempo atrás, um homem chamado 'Ikaro' era temido por todos...", e1: "Bandido", e_boss: "Bandido Líder" },
+    { text: "Suas suspeitas estavam certas. Você obteve seu primeiro Orbe de StruPower!...", e1: "Espírito de areia", e_boss: "Mestre da areia" },
+    { text: "Com o segundo orbe em suas mãos, você decide procurar em uma densa floresta...", e1: "Sombra Lupina", e_boss: "Senhor Lobo" },
+    { text: "Reconhecendo sua força, a figura misteriosa te entrega um Orbe...", e1: "Esqueleto", e_boss: "Esqueleto Monstruoso" },
+    { text: "Com a investida dos esqueletos impedida, o buraco retorna ao normal...", e1: "Clone mouse", e_boss: "Clone do VdcVdi" },
+    { text: "Com o ataque dos clones evitados, você decide continuar sua viagem...", e1: "Aluno Desgraçado", e_boss: "Vinícius" },
+    { text: "'Nada mal, fique com isso.' O aluno entrega o Orbe dele...", e1: "Membro da Eclipse", e_boss: "O Cara da Eclipse" },
+    { text: "Com o líder da gangue derrotado, você está cada vez mais próximo...", e1: "Sombra Maligna", e_boss: "Sombra poderosa" },
+    { text: "Você derrotou o homem! E obteve o nono Orbe!... Ou será que isso realmente aconteceu?...", e1: "Clone Tyrone", e_boss: "Clone Tyrone 0.0005%" },
+    { text: "'Você está pronto.' A figura desaparece. Você está preparado para enfrenta o homem misterioso...", e1: "Sombra de Ikaro", e_boss: "Ikaro, o Maior Monstro da História" },
+    { text: "Você foi convocado por uma voz misteriosa. 'Você conseguiu impedir a ameaça...", e1: "Avatar de Tyrone", e_boss: "Tyrone DDD" }
+];
+
+// ==================================================
+// FUNÇÕES GERAIS E UI
+// ==================================================
+function toggleMenu(menuId, show) {
+    const menu = document.getElementById(menuId);
+    if(!menu) return;
+    if(show) { 
+        if(menuId === "recordsMenu") updateRecordsUI(); 
+        if(menuId === "inventoryMenu") { renderCraftingTab(); renderPotionsTab(); renderArtifactsTab(); updateInventoryText(); } 
+        if(menuId === "storyScreen") { updateStoryUI(); playMusic("story"); keepBattleMusic = false; }
+        if(menuId === "towerSelectionMenu") { playMusic("tower"); keepBattleMusic = false; }
+        if(menuId === "adventureMenu") playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu");
+        if(menuId === "dungeonUI") { playMusic("tower"); keepBattleMusic = false; }
+    }
+    menu.style.display = show ? "flex" : "none";
+}
+function updateAchievementsUI() { const c = document.getElementById("achievementsListContainer"); if(!c) return; c.innerHTML = ""; achievementsData.forEach(ach => { let unlocked = achievements.includes(ach.id); c.innerHTML += `<div style="background:#111;border:1px solid ${unlocked ? 'gold' : '#444'};padding:15px;border-radius:10px;text-align:left;opacity:${unlocked?'1':'0.5'};"><h3 style="margin:0 0 5px 0;color:${unlocked?'gold':'#888'};">${unlocked?'🏆':'🔒'} ${ach.name}</h3><p style="margin:0;font-size:14px;color:#ccc;">${unlocked ? ach.desc : '???'}</p></div>`; }); }
+function unlockAchievement(id) { if(!achievements.includes(id)) { achievements.push(id); const ach = achievementsData.find(a => a.id === id); alert(`🏆 NOVA CONQUISTA DESBLOQUEADA!\n\n${ach.name}: ${ach.desc}`); saveGame(); updateRecordsUI(); } }
+function updateScore(){ document.getElementById("score").innerText = "StruPoints: " + Math.floor(points); document.getElementById("shopPoints").innerText = "StruPoints: " + Math.floor(points); document.getElementById("multiplierText").innerText = "Multiplicador: x" + (multiplier * activeBuff.multiplier).toFixed(1) + " | Rebirths: " + rebirthCount; playerStats.totalStruPointsEarned = Math.max(playerStats.totalStruPointsEarned, points); updateRecordsUI(); }
+function updateBuffDisplay() { if(activeBuff.duration > 0) { let min = Math.floor(activeBuff.duration / 60), sec = activeBuff.duration % 60; document.getElementById("activeBuffDisplay").innerText = `🧪 ATIVO: ${activeBuff.name} (${activeBuff.multiplier}x Ganhos) - ${min}:${sec < 10 ? '0':''}${sec}`; } else { document.getElementById("activeBuffDisplay").innerText = ""; } }
+function openShop(){ toggleMenu('shopMenu', true); playMusic("menu"); keepBattleMusic = false; }
+function closeShop(){ toggleMenu('shopMenu', false); playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu"); keepBattleMusic = false; }
+function showShopPage(page, button){ document.querySelectorAll(".shopPage").forEach(p => p.classList.remove("active")); document.getElementById(page).classList.add("active"); document.querySelectorAll(".shopTab").forEach(tab => tab.classList.remove("active")); button.classList.add("active"); }
+function startGame(){ if(!hasSave) { document.getElementById("menu").style.display = "none"; document.getElementById("modeScreen").style.display = "flex"; } else { proceedToLoading(); } }
+function selectMode(isIron) { ironSoulMode = isIron; document.getElementById("modeScreen").style.display = "none"; proceedToLoading(); }
+function proceedToLoading(){ 
+    document.getElementById("menu").style.display = "none"; 
+    document.getElementById("loading").style.display = "flex"; 
+    if(ironSoulMode) document.getElementById("ironSoulDisplay").style.display = "block";
+    document.getElementById("musicControls").style.display = "flex";
+    playMusic("menu");
+    let progress = 0, interval = setInterval(()=>{ 
+        progress += 5; 
+        document.getElementById("loadingFill").style.width = progress + "%"; 
+        if(progress >= 100){ 
+            clearInterval(interval); 
+            document.getElementById("loading").style.display = "none"; 
+            document.getElementById("gameUI").style.display = "block"; 
+            syncMobileNav(); 
+            updateStoryUI(); 
+            autoSaveInterval = setInterval(saveGame, 10000); 
+        } 
+    },40); 
+}
+
+// ==================================================
+// MAPAS E TEMAS (com música)
+// ==================================================
+function selectMap(mapId) { 
+    const map = mapsData[mapId]; 
+    if(!map) return; 
+    if(rebirthCount < map.req) { 
+        alert(`Você precisa de pelo menos ${map.req} Rebirths para acessar este mapa!`); 
+        return; 
+    } 
+    currentMap = mapId; 
+    applyThemeVisuals(); 
+    recalculateMultiplier(); 
+    updateButtonsText(); 
+    updateScore(); 
+    updateInventoryText();
+    if(map.music) playMusic(map.music);
+    keepBattleMusic = false;
+}
+function checkAutoMapUnlock() { 
+    let bestAvailableMap = "default"; 
+    if(rebirthCount >= 20) bestAvailableMap = "heavenhell"; 
+    else if(rebirthCount >= 12) bestAvailableMap = "space"; 
+    else if(rebirthCount >= 7) bestAvailableMap = "hell"; 
+    else if(rebirthCount >= 3) bestAvailableMap = "forest"; 
+    else if(rebirthCount >= 1) bestAvailableMap = "desert"; 
+    if(currentMap === "default" && bestAvailableMap !== "default") currentMap = bestAvailableMap; 
+    applyThemeVisuals(); 
+    recalculateMultiplier(); 
+    updateButtonsText();
+    if(mapsData[currentMap]?.music) playMusic(mapsData[currentMap].music);
+    keepBattleMusic = false;
+}
+function recalculateMultiplier() { multiplier = 1 + permanentMultiplier; if(mapsData[currentMap]) multiplier += mapsData[currentMap].mult; multiplier += currentSkinMult; let itemStats = getEquippedItemStats(); multiplier += itemStats.mult; }
+function applyThemeVisuals(){ 
+    document.querySelectorAll('.mapEmoji').forEach(e => e.remove()); 
+    document.body.classList.remove("desertTheme","forestTheme","hellTheme","spaceTheme","heavenHellTheme"); 
+    if(currentMap === "default") return; 
+    const map = mapsData[currentMap]; 
+    document.body.classList.add(map.class); 
+    for(let i=0;i<20;i++){ 
+        let emoji = document.createElement("div"); 
+        emoji.className = "mapEmoji"; 
+        emoji.innerText = Math.random() > 0.5 ? map.emoji1 : map.emoji2; 
+        emoji.style.left = Math.random()*100 + "vw"; 
+        emoji.style.top = Math.random()*100 + "vh"; 
+        document.body.appendChild(emoji); 
+    } 
+}
+function updateSingleMapUI(id, originalName) { const btn = document.getElementById(`btn-map-${id}`); const map = mapsData[id]; if(!btn) return; if(rebirthCount >= map.req) { btn.classList.add("map-unlocked"); if(currentMap === id) btn.innerHTML = `${originalName}<br>+${map.mult.toFixed(1)}x Mult<br><span style="color:#00ff66; font-weight:bold;">MUNDO ATIVO</span>`; else btn.innerHTML = `${originalName}<br>+${map.mult.toFixed(1)}x Mult<br><span style="color:cyan;">CLIQUE PARA VIAJAR</span>`; } else { btn.classList.remove("map-unlocked"); btn.innerHTML = `${originalName}<br>+${map.mult.toFixed(1)}x Mult<br><span>Bloqueado (Requer ${map.req} Rebirths)</span>`; } }
+function updateButtonsText() { if(document.getElementById("multButton")) document.getElementById("multButton").innerText = "⚡ Multiplicador +1.0 (Preço: " + multiplierPrice + ")"; if(document.getElementById("critButton")) document.getElementById("critButton").innerText = "💥 Chance Crítica +" + critUpgradeAmount + " (" + critUpgradePrice + ")"; if(document.getElementById("rebirthButton")) document.getElementById("rebirthButton").innerText = "🪽 REBIRTH (" + rebirthPrice + ")"; if(document.getElementById("btnBuyForca")) document.getElementById("btnBuyForca").innerText = `💪 Força +1 [Nvl ${p_forca}] (${cost_forca} pts)`; if(document.getElementById("btnBuyConst")) document.getElementById("btnBuyConst").innerText = `❤️ Constituição +1 [Nvl ${p_const}] (${cost_const} pts)`; if(document.getElementById("btnBuyPrec")) document.getElementById("btnBuyPrec").innerText = `🎯 Precisão +0.1 [Nvl ${p_prec}/9] (${p_prec >= 9 ? 'MÁX' : cost_prec + ' pts'})`; if(document.getElementById("btnBuyAgil")) document.getElementById("btnBuyAgil").innerText = `🏃 Agilidade +0.1 [Nvl ${p_agil}/6] (${p_agil >= 6 ? 'MÁX' : cost_agil + ' pts'})`; updateSingleMapUI("desert","🏜️ DESERTO"); updateSingleMapUI("forest","🌲 FLORESTA DO SR LOBO"); updateSingleMapUI("hell","🔥 VERDADEIRO INFERNO"); updateSingleMapUI("space","🌌 DIMENSÃO DOS DERROTADOS"); updateSingleMapUI("heavenhell","👼 VERDADEIRO CÉU E INFERNO 🔥"); if(ironSoulMode && rebirthCount >= 12) unlockAchievement("permadeath_survivor"); }
+
+// ==================================================
+// ITENS E CRAFTING
+// ==================================================
+function getEquippedItemStats() { if(!equippedItem) return { mult: 0, crit: 0, stealth: false, name: "Nenhum" }; const item = craftableItemsData.find(i => i.id === equippedItem); if(!item) return { mult: 0, crit: 0, stealth: false, name: "Nenhum" }; let s = { mult: 0, crit: 0, stealth: false, name: item.name }; if(item.type === "mult") s.mult = item.power; if(item.type === "crit") s.crit = item.power; if(item.type === "mult_crit") { s.mult = item.power; s.crit = item.critPower; } if(item.type === "mult_stealth") { s.mult = item.power; s.stealth = true; } return s; }
+function updateEquippedItemVisual(visualId) { let visual = document.getElementById(visualId); if(!visual) return; if(equippedItem) { let item = craftableItemsData.find(i => i.id === equippedItem); visual.innerHTML = item ? item.icon : "💍"; visual.style.display = "block"; } else visual.style.display = "none"; }
+function renderCraftingTab() { const namesTranslate = { desert_gem:"🏜️ Joia Deserto", sand_relic:"⏳ Relíquia Areia", wolf_fang:"🐺 Presa Lobo", ancient_bark:"🌲 Casca Anciã", demon_horn:"😈 Chifre Demônio", hell_fire:"🔥 Fogo Infernal", void_matter:"🌌 Matéria Vazio", cosmic_dust:"✨ Poeira Cósmica", dual_soul:"👼 Alma Dupla", divine_tears:"💧 Lágrima Divina" }; let matHTML = ""; for(let key in materials) matHTML += `<div>${namesTranslate[key] || key}: ${materials[key]}</div>`; document.getElementById("materialsList").innerHTML = matHTML; const container = document.getElementById("craftingListContainer"); container.innerHTML = ""; craftableItemsData.forEach(item => { const card = document.createElement("div"); card.className = "craft-card"; let costText = "", canCraft = true; for(let key in item.cost) { let userAmount = materials[key] || 0, req = item.cost[key]; if(userAmount < req) canCraft = false; costText += `${req}x ${namesTranslate[key] || key} | `; } const isOwned = craftedItems.includes(item.id), isEquipped = equippedItem === item.id; let btnHTML = ""; if(isEquipped) btnHTML = `<button class="craft-btn btn-c-equipped">EQUIPADO</button>`; else if(isOwned) btnHTML = `<button class="craft-btn btn-c-equip" onclick="equipCraftItem('${item.id}')">EQUIPAR</button>`; else btnHTML = `<button class="craft-btn btn-c-craft" onclick="craftItem('${item.id}')" ${!canCraft ? 'style="opacity:0.4;cursor:not-allowed;"' : ''}>CRIAR ITEM</button>`; card.innerHTML = `<h3>${item.icon} ${item.name}</h3><p>Efeito: ${item.desc}</p>${!isOwned ? `<div class="craft-cost">Custo: ${costText.slice(0,-3)}</div>` : `<div class="craft-cost" style="color:#00ff66;">Adquirido!</div>`}${btnHTML}`; container.appendChild(card); }); }
+function craftItem(id) { const item = craftableItemsData.find(i => i.id === id); if(!item || craftedItems.includes(id)) return; for(let key in item.cost) if((materials[key] || 0) < item.cost[key]) return; for(let key in item.cost) materials[key] -= item.cost[key]; craftedItems.push(id); trackStat('totalCrafts', 1); renderCraftingTab(); updateRecordsUI(); }
+function equipCraftItem(id) { if(!craftedItems.includes(id)) return; equippedItem = id; renderCraftingTab(); recalculateMultiplier(); updateScore(); updateInventoryText(); updateEquippedItemVisual("equippedItemVisual"); updateEquippedItemVisual("combatPlayerItemVisual"); }
+function renderPotionsTab() { const namesTranslate = { desert_gem:"🏜️ Joia", sand_relic:"⏳ Relíquia", wolf_fang:"🐺 Presa", ancient_bark:"🌲 Casca", demon_horn:"😈 Chifre", hell_fire:"🔥 Fogo", void_matter:"🌌 Matéria", cosmic_dust:"✨ Poeira", dual_soul:"👼 Alma", divine_tears:"💧 Lágrima" }; const container = document.getElementById("potionsListContainer"); container.innerHTML = ""; potionsData.forEach(pot => { const card = document.createElement("div"); card.className = "craft-card"; let costText = "", canCraft = true; for(let key in pot.cost) { let userAmount = materials[key] || 0, req = pot.cost[key]; if(userAmount < req) canCraft = false; costText += `${req}x ${namesTranslate[key] || key} `; } card.innerHTML = `<h3 style="color:#00e5ff;">🧪 ${pot.name}</h3><p>${pot.desc}</p><div class="craft-cost">Requisitos: ${costText}</div><button class="craft-btn btn-c-craft" style="background:linear-gradient(45deg,#0088cc,#00e5ff);" onclick="craftAndUsePotion('${pot.id}')" ${!canCraft ? 'style="opacity:0.4;cursor:not-allowed;"' : ''}>FABRICAR E USAR</button>`; container.appendChild(card); }); }
+function craftAndUsePotion(id) { const pot = potionsData.find(p => p.id === id); if(!pot) return; for(let key in pot.cost) if((materials[key] || 0) < pot.cost[key]) { alert("Materiais insuficientes!"); return; } for(let key in pot.cost) materials[key] -= pot.cost[key]; activeBuff.multiplier = pot.mult; activeBuff.duration = pot.duration; activeBuff.name = pot.name; trackStat('totalPotionsUsed', 1); alert(`Sucesso! Você consumiu a poção e ativou: ${pot.name}`); renderPotionsTab(); renderCraftingTab(); updateScore(); updateBuffDisplay(); updateRecordsUI(); }
+function renderArtifactsTab() { const container = document.getElementById("artifactsListContainer"); if(!container) return; if(artifacts.length === 0) { container.innerHTML = "<p style='color:#ccc;'>Nenhum artefato encontrado. Complete Torres nas Dificuldades para ganhar!</p>"; return; } artifacts.forEach(art => { const isEquipped = equippedArtifacts.includes(art.uid); const card = document.createElement("div"); card.className = "craft-card"; card.innerHTML = `<h3 style="color:#ffd700;">${art.name}</h3><p>${art.effect}</p><button class="craft-btn ${isEquipped ? 'btn-c-equipped' : 'btn-c-equip'}" onclick="toggleArtifact('${art.uid}')">${isEquipped ? 'DESEQUIPAR' : 'EQUIPAR'}</button>`; container.appendChild(card); }); }
+function toggleArtifact(uid) { if(equippedArtifacts.includes(uid)) equippedArtifacts = equippedArtifacts.filter(id => id !== uid); else { if(equippedArtifacts.length >= 3) { alert("Você só pode equipar 3 artefatos ao mesmo tempo!"); return; } equippedArtifacts.push(uid); } renderArtifactsTab(); updateInventoryText(); saveGame(); }
+function dropArtifact() { let chance = towerDifficulty * 30; if(Math.random() * 100 <= chance) { let artTmpl = possibleArtifacts[Math.floor(Math.random() * possibleArtifacts.length)]; let newArtifact = { uid: "art_" + Date.now() + Math.floor(Math.random()*100), baseId: artTmpl.id, name: artTmpl.name, effect: artTmpl.effect, type: artTmpl.type, val: artTmpl.val }; artifacts.push(newArtifact); alert("🎁 VOCÊ OBTEVE UM ARTEFATO DE CHEFE!\nNome: " + newArtifact.name + "\nEfeito: " + newArtifact.effect); saveGame(); updateRecordsUI(); checkTitleUnlocks(); } }
+function updateInventoryText() { const invText = document.getElementById("inventoryText"); let i_stats = getEquippedItemStats(); if(invText) invText.innerHTML = `<strong>Mapa Atual:</strong> ${mapsData[currentMap].name}<br><strong>Total de Rebirths:</strong> ${rebirthCount}<br><strong>Bônus Fixo Rebirth:</strong> +${(3.5 * rebirthCount).toFixed(1)}x Mult<br><strong>Skins Desbloqueadas:</strong> ${ownedSkins.length} de ${skinsData.length}<br><strong>Nível da História:</strong> ${ikaroDefeated ? "FASE EX" : storyLevel}<br><br><div style="background:#111;padding:10px;border-radius:10px;border:1px solid #444;color:#fff;"><h3 style="color:#00ff66;margin-top:0;">Item Ativo: ${i_stats.name}</h3>Bônus de Mult: +${i_stats.mult}x<br>Bônus de Crítico Clicks (Redução): -${i_stats.crit}<br>Bônus Furtividade: ${i_stats.stealth ? "Sim" : "Não"}</div>`; }
+function switchInv(tab) { ["btnInvStats","btnInvCraft","btnInvPotions","btnInvArtifacts"].forEach(id => document.getElementById(id).classList.remove("active")); ["invStatsTab","invCraftTab","invPotionsTab","invArtifactsTab"].forEach(id => document.getElementById(id).style.display = "none"); if(tab === 'stats') { document.getElementById("btnInvStats").classList.add("active"); document.getElementById("invStatsTab").style.display = "block"; } else if(tab === 'craft') { document.getElementById("btnInvCraft").classList.add("active"); document.getElementById("invCraftTab").style.display = "block"; } else if(tab === 'potions') { document.getElementById("btnInvPotions").classList.add("active"); document.getElementById("invPotionsTab").style.display = "block"; } else { document.getElementById("btnInvArtifacts").classList.add("active"); document.getElementById("invArtifactsTab").style.display = "block"; } }
+
+// ==================================================
+// SKINS
+// ==================================================
+function renderSkins() { const container = document.getElementById("skinsContainer"); if(!container) return; container.innerHTML = ""; skinsData.forEach(skin => { const card = document.createElement("div"); card.className = `skin-card border-${skin.rarity}`; let previewStyle = `background: ${skin.bg}; box-shadow: ${skin.shadow};`; if(skin.borderGlow) previewStyle += ` border: 2px solid ${skin.borderGlow};`; const isOwned = ownedSkins.includes(skin.id), isEquipped = equippedSkin === skin.id; let btnHtml = ""; if(isEquipped) btnHtml = `<button class="skin-btn btn-equipped">EQUIPADO</button>`; else if(isOwned) btnHtml = `<button class="skin-btn btn-equip" onclick="equipSkin('${skin.id}')">EQUIPAR</button>`; else btnHtml = `<button class="skin-btn btn-buy" onclick="buySkin('${skin.id}')">COMPRAR</button>`; let visualInside = skin.img ? `<img src="${skin.img}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : skin.emoji; card.innerHTML = `<div class="skin-name">${skin.name}</div><div class="skin-preview" style="${previewStyle}">${visualInside}</div><div class="skin-mult">+${skin.mult.toFixed(1)}x Mult</div><div class="skin-info skin-price">${isOwned ? "Adquirido" : skin.price + " pts"}</div>${btnHtml}`; container.appendChild(card); }); }
+function buySkin(id) { const skin = skinsData.find(s => s.id === id); if(!skin || points < skin.price) return; points -= skin.price; ownedSkins.push(id); trackStat('totalSkinsUnlocked', 1); renderSkins(); updateScore(); updateInventoryText(); updateRecordsUI(); checkTitleUnlocks(); }
+function equipSkin(id) { const skin = skinsData.find(s => s.id === id); if(!skin || !ownedSkins.includes(id)) return; currentSkinMult = skin.mult; equippedSkin = id; applySkinVisual(skin); recalculateMultiplier(); renderSkins(); updateScore(); }
+function applySkinVisual(skin) { if(!document.getElementById("ball")) return; const ballEl = document.getElementById("ball"); const ratEl = document.getElementById("rat"); ballEl.style.background = skin.bg; ballEl.style.boxShadow = skin.shadow; if(skin.img) { ratEl.innerHTML = `<img src="${skin.img}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`; ratEl.style.display = "flex"; } else if(skin.emoji !== "") { ratEl.innerHTML = skin.emoji; ratEl.style.display = "flex"; } else { ratEl.style.display = "none"; } }
+
+// ==================================================
+// CLIQUE E EVENTOS
+// ==================================================
+function createClickEffect(x, y){ let effect = document.createElement("div"); effect.className = "clickEffect"; let gainValue = multiplier * activeBuff.multiplier; effect.innerText = "+" + gainValue.toFixed(1); effect.style.left = x + "px"; effect.style.top = y + "px"; document.body.appendChild(effect); setTimeout(() => effect.remove(), 800); }
+function checkFoundEvent(){ if(totalClicks % 6000 !== 0) return; let itemStats = getEquippedItemStats(); let maxChance = itemStats.stealth ? 25 : 10; let chance = Math.floor(Math.random() * maxChance); if(chance !== 0) return; let lost = Math.floor(points * 0.35); points -= lost; document.getElementById("foundLossTitleText").innerText = "VOCÊ FOI ENCONTRADO!"; document.getElementById("foundLossText").innerText = "Você perdeu " + lost + " StruPoints"; document.getElementById("foundScreen").style.display = "flex"; setTimeout(() => document.getElementById("foundScreen").style.display = "none", 2000); updateScore(); }
+function checkFoundEvent2(){ let lost = Math.floor(points * 0.35); points -= lost; document.getElementById("foundLossTitleText").innerText = "VOCÊ FOI ENCONTRADO!"; document.getElementById("foundLossText").innerText = "Você perdeu " + lost + " StruPoints"; document.getElementById("foundScreen").style.display = "flex"; setTimeout(() => document.getElementById("foundScreen").style.display = "none", 2000); updateScore(); }
+function criticalHit(){ let itemStats = getEquippedItemStats(); let effectiveCritChance = Math.max(10, critChance - itemStats.crit); let random = Math.floor(Math.random() * effectiveCritChance); if(random === 0){ let gain = Math.floor(2500 * (multiplier * activeBuff.multiplier)); points += gain; document.getElementById("criticalGainText").innerText = "+ " + gain + " StruPoints"; let screen = document.getElementById("criticalScreen"); screen.style.display = "flex"; setTimeout(() => screen.style.display = "none", 700); } }
+function ganharPonto(x, y){ points += (multiplier * activeBuff.multiplier); totalClicks++; trackStat('totalClicks', 1); createClickEffect(x, y); criticalHit(); checkFoundEvent(); updateScore(); if(totalClicks >= 1000000) unlockAchievement("million_clicks"); }
+document.getElementById("ball")?.addEventListener("click", (e) => { ganharPonto(e.clientX, e.clientY); });
+document.getElementById("ball")?.addEventListener("touchmove", (e) => { let touch = e.touches[0]; ganharPonto(touch.clientX, touch.clientY); }, {passive: true});
+
+function syncMobileNav() {
+    const nav = document.getElementById('mobileNav');
+    if(!nav) return;
+    if(window.innerWidth <= 768) nav.style.display = 'flex';
+    else nav.style.display = 'none';
+}
+window.addEventListener('resize', syncMobileNav);
+function toggleMobileMore() {
+    const m = document.getElementById('mobileMore');
+    if(m) m.classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+    const m = document.getElementById('mobileMore');
+    if(m && m.classList.contains('open') && !e.target.closest('#mobileMore') && !e.target.closest('#mobileNav')) {
+        m.classList.remove('open');
+    }
+});
+window.addEventListener('load', () => { syncMobileNav(); playMusic("menu"); });
+
+// ==================================================
+// UPGRADES E REBIRTH
+// ==================================================
+function buyMultiplier(){ if(points < multiplierPrice) return; points -= multiplierPrice; permanentMultiplier += 1000000.0; multiplierPrice = Math.floor(multiplierPrice * 1.5); recalculateMultiplier(); updateButtonsText(); updateScore(); }
+function buyCritUpgrade(){ if(points < critUpgradePrice) return; points -= critUpgradePrice; critChance -= critUpgradeAmount; if(critChance < 10) critChance = 10; critUpgradeAmount += 25; critUpgradePrice = Math.floor(critUpgradePrice * 1.5); updateButtonsText(); updateScore(); }
+function buyRandomColor(){ if(points < 2000) return; points -= 2000; let colors = ["red","blue","green","purple","gold","pink","cyan"]; let color = colors[Math.floor(Math.random()*colors.length)]; let ballEl = document.getElementById("ball"); ballEl.style.background = color; ballEl.style.boxShadow = "0 0 40px " + color; updateScore(); }
+function buyForca() { if(points < cost_forca) return; points -= cost_forca; p_forca += 1; cost_forca = Math.floor(cost_forca * 1.5); updateButtonsText(); updateScore(); }
+function buyConst() { if(points < cost_const) return; points -= cost_const; p_const += 1; cost_const = Math.floor(cost_const * 1.5); updateButtonsText(); updateScore(); }
+function buyPrec() { if(points < cost_prec) return; if(p_prec >= 9) { alert("Precisão no nível MÁXIMO!"); return; } points -= cost_prec; p_prec += 1; cost_prec = Math.floor(cost_prec * 2.0); updateButtonsText(); updateScore(); }
+function buyAgil() { if(points < cost_agil) return; if(p_agil >= 6) { alert("Agilidade no nível MÁXIMO!"); return; } points -= cost_agil; p_agil += 1; cost_agil = Math.floor(cost_agil * 2.0); updateButtonsText(); updateScore(); }
+function rebirth(){ if(points < rebirthPrice) return; points = 0; rebirthCount++; permanentMultiplier = 3.5 * rebirthCount; checkAutoMapUnlock(); recalculateMultiplier(); multiplierPrice = 1000; critUpgradePrice = 500; critUpgradeAmount = 25; critChance = 10000; rebirthPrice += 100000; updateButtonsText(); updateScore(); updateInventoryText(); trackStat('totalRebirths', 1); checkTitleUnlocks(); updateRecordsUI(); if(rebirthCount >= 30) unlockAchievement("immortal_legend"); if(ownedSkins.length >= 10) unlockAchievement("skin_collector"); if(artifacts.length >= 15) unlockAchievement("colecionador_artefatos"); }
+
+// ==================================================
+// TORRE E DUNGEON
+// ==================================================
+function openTowerSelection() { toggleMenu('adventureMenu', false); toggleMenu('towerSelectionMenu', true); }
+function generateDungeon(difficulty) { 
+    towerDifficulty = difficulty; 
+    toggleMenu('towerSelectionMenu', false); 
+    toggleMenu('dungeonUI', true); 
+    document.getElementById("biomeNameUI").innerText = mapsData[currentMap].name; 
+    document.getElementById("dungeonLog").innerText = "Você entrou na torre. Procure a sala do chefe e tome cuidado com as sombras."; 
+    dungeonMap = Array(5).fill(null).map(() => Array(5).fill(0)); 
+    playerDungeonPos = {x: 2, y: 2}; 
+    dungeonMap[2][2] = 1; 
+    let salasCriadas = 0; 
+    while(salasCriadas < 10) { 
+        let rx = Math.floor(Math.random() * 5), ry = Math.floor(Math.random() * 5); 
+        if(dungeonMap[rx][ry] === 0) { 
+            let hasNeighbor = (rx>0 && dungeonMap[rx-1][ry]!==0) || (rx<4 && dungeonMap[rx+1][ry]!==0) || (ry>0 && dungeonMap[rx][ry-1]!==0) || (ry<4 && dungeonMap[rx][ry+1]!==0); 
+            if(hasNeighbor) { 
+                dungeonMap[rx][ry] = 2; 
+                salasCriadas++; 
+            } 
+        } 
+    } 
+    dungeonMap[0][0] = 4; 
+    dungeonMap[Math.floor(Math.random()*5)][Math.floor(Math.random()*5)] = 3; 
+    dungeonMap[2][2] = 1; 
+    renderDungeonMap(); 
+}
+function renderDungeonMap() { const grid = document.getElementById("dungeonGrid"); grid.innerHTML = ""; for(let y=0; y<5; y++) for(let x=0; x<5; x++) { let cell = document.createElement("div"); cell.className = "dungeon-cell"; if(dungeonMap[x][y] === 0) { cell.style.background = "transparent"; cell.style.border = "none"; cell.style.cursor = "default"; } else { if(x === playerDungeonPos.x && y === playerDungeonPos.y) { cell.style.background = "#00aaff"; cell.innerText = "P"; } else if(dungeonMap[x][y] === 4) { cell.style.background = "#500"; cell.innerText = "💀"; } else if(dungeonMap[x][y] === 3) { cell.style.background = "#cc9900"; cell.innerText = "🎁"; } else if(dungeonMap[x][y] === 2) { cell.style.background = "#440000"; cell.innerText = "⚔️"; } else if(dungeonMap[x][y] === 1) { cell.style.background = "#444"; cell.innerText = ""; } cell.onclick = () => movePlayerTo(x, y); } grid.appendChild(cell); } }
+function movePlayerTo(x, y) { let dx = Math.abs(playerDungeonPos.x - x), dy = Math.abs(playerDungeonPos.y - y); if((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) { playerDungeonPos.x = x; playerDungeonPos.y = y; resolveRoom(dungeonMap[x][y], x, y); } else { document.getElementById("dungeonLog").innerText = "Muito longe! Ande apenas para salas adjacentes."; } }
+function resolveRoom(type, x, y) { if(type === 1) { document.getElementById("dungeonLog").innerText = "Sala vazia e limpa. Nada aqui."; renderDungeonMap(); } else if(type === 2) { document.getElementById("dungeonLog").innerText = "Uma sombra bloqueia o caminho!"; startDungeonCombat(false, x, y); } else if(type === 3) { document.getElementById("dungeonLog").innerText = "Você encontrou um BAÚ de materiais!"; let dropsPossiveis = mapsData[currentMap].drops || []; if(dropsPossiveis.length > 0) { let matTmpl = dropsPossiveis[Math.floor(Math.random() * dropsPossiveis.length)]; let gain = 3 * towerDifficulty; materials[matTmpl.id] = (materials[matTmpl.id] || 0) + gain; trackStat('totalMaterialsCollected', gain); if(!discoveredMaterials.find(m => m.id === matTmpl.id)) discoveredMaterials.push({ id: matTmpl.id, name: matTmpl.name }); alert(`Baú Aberto! Você ganhou ${gain}x ${matTmpl.name}.`); } else { points += 5000 * towerDifficulty; updateScore(); alert("Baú Aberto! Você ganhou StruPoints puros!"); } dungeonMap[x][y] = 1; renderDungeonMap(); } else if(type === 4) { document.getElementById("dungeonLog").innerText = "A SALA DO LORDE GUARDIÃO!"; startDungeonCombat(true, x, y); } }
+function exitDungeon() { 
+    toggleMenu('dungeonUI', false); 
+    playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu");
+    keepBattleMusic = false;
+}
+function startDungeonCombat(isBoss, x, y) { 
+    dungeonRoomTarget = {x, y}; 
+    combatMode = isBoss ? "dungeonBoss" : "dungeonEnemy"; 
+    toggleMenu('dungeonUI', false); 
+    setupCombatants(); 
+    // Torre NÃO toca música de batalha - mantém a música da torre que já está tocando
+}
+
+// ==================================================
+// COMBATE
+// ==================================================
+function startNormalCombat() { 
+    combatMode = "normal"; 
+    toggleMenu('adventureMenu', false); 
+    setupCombatants(); 
+    playMusic("battle");
+    keepBattleMusic = false;
+}
+function startInfiniteCombat() { 
+    combatMode = "infinite"; 
+    infiniteWave = 1; 
+    toggleMenu('adventureMenu', false); 
+    setupCombatants(); 
+    playMusic("battle");
+    keepBattleMusic = true; // Mantém música de batalha no infinito
+}
+function startStoryCombat() { 
+    combatMode = "story"; 
+    storySubWave = 1; 
+    toggleMenu('storyScreen', false); 
+    setupCombatants(); 
+    playMusic("battle");
+    keepBattleMusic = true; // Mantém música de batalha no história também
+}
+function setupCombatants() { 
+    playerStats.totalCombats++;
+    let artBonusDmg = 0, artBonusHp = 0; 
+    equippedArtifacts.forEach(uid => { let a = artifacts.find(x => x.uid === uid); if(a) { if(a.type === "dmg") artBonusDmg += a.val; if(a.type === "hp") artBonusHp += a.val; } }); 
+    c_playerMaxHp = Math.floor(100 + (p_const * 20) + (currentSkinMult * 40)) + artBonusHp; 
+    c_playerHp = c_playerMaxHp; 
+    c_playerDmg = Math.floor(20 + (p_forca * 5) + (currentSkinMult * 15)) + artBonusDmg; 
+    document.getElementById("attackBtn").style.display = "block"; 
+    document.getElementById("attackBtn").style.pointerEvents = "auto"; 
+    document.getElementById("attackBtn").style.opacity = "1"; 
+    document.getElementById("nextWaveBtn").style.display = "none"; 
+    let pBall = document.getElementById("combatPlayerBall"), eBall = document.getElementById("combatEnemyBall"); 
+    pBall.classList.remove("anim-death"); eBall.classList.remove("anim-death"); 
+    if(combatMode === "normal") { 
+        document.getElementById("combatTitle").innerText = "COMBATE DE BIOMA"; 
+        document.getElementById("combatSubTitle").innerText = `Bioma Ativo: ${mapsData[currentMap].name}`; 
+        c_enemyMaxHp = Math.max(50, Math.floor(c_playerMaxHp * 0.8)); 
+        c_enemyHp = c_enemyMaxHp; 
+        c_enemyDmg = Math.max(5, Math.floor(c_playerDmg * 0.8)); 
+        document.getElementById("enemyTitle").innerText = `Criatura do ${mapsData[currentMap].name}`; 
+        eBall.innerText = "👾"; eBall.style.background = "#555"; 
+    } else if(combatMode === "infinite") { 
+        document.getElementById("combatTitle").innerText = "MODO INFINITO"; 
+        buildInfiniteWaveEnemy(); 
+    } else if(combatMode === "story") { 
+        document.getElementById("combatTitle").innerText = "MODO HISTÓRIA"; 
+        document.getElementById("combatSubTitle").innerText = `Fase ${storyLevel}`; 
+        buildStoryEnemy(); 
+    } else if(combatMode === "dungeonEnemy") { 
+        let mult = towerDifficulty === 1 ? 0.5 : (towerDifficulty === 2 ? 1.0 : 1.5); 
+        c_enemyMaxHp = Math.floor(c_playerMaxHp * mult); 
+        c_enemyHp = c_enemyMaxHp; 
+        c_enemyDmg = Math.floor(c_playerDmg * mult); 
+        document.getElementById("combatTitle").innerText = "INIMIGO DA TORRE"; 
+        document.getElementById("combatSubTitle").innerText = `Dificuldade: ${towerDifficulty}`; 
+        document.getElementById("enemyTitle").innerText = "Sombra da Torre"; 
+        eBall.innerText = "👻"; eBall.style.background = "#222"; 
+        registerEnemyKilled("shadow", false); 
+    } else if(combatMode === "dungeonBoss") { 
+        let multHp = towerDifficulty === 1 ? 1.0 : (towerDifficulty === 2 ? 2.0 : 3.0); 
+        let multDmg = towerDifficulty === 1 ? 1.0 : (towerDifficulty === 2 ? 1.5 : 2.0); 
+        c_enemyMaxHp = Math.floor(c_playerMaxHp * multHp); 
+        c_enemyHp = c_enemyMaxHp; 
+        c_enemyDmg = Math.floor(c_playerDmg * multDmg); 
+        document.getElementById("combatTitle").innerText = "LORDE GUARDIÃO DA TORRE"; 
+        document.getElementById("combatSubTitle").innerText = `Bioma: ${mapsData[currentMap].name}`; 
+        document.getElementById("enemyTitle").innerText = mapsData[currentMap].bossName; 
+        eBall.innerText = "👹"; eBall.style.background = "#500"; 
+    } 
+    const currentSkinData = skinsData.find(s => s.id === equippedSkin) || skinsData[0]; 
+    pBall.style.background = currentSkinData.bg; 
+    pBall.style.boxShadow = currentSkinData.shadow; 
+    if(currentSkinData.img) pBall.innerHTML = `<img src="${currentSkinData.img}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;"> <div id="combatPlayerItemVisual" style="position:absolute; top:0; right:0; font-size:25px; filter:drop-shadow(0 0 5px black);"></div>`; 
+    else pBall.innerHTML = `${currentSkinData.emoji} <div id="combatPlayerItemVisual" style="position:absolute; top:0; right:0; font-size:25px; filter:drop-shadow(0 0 5px black);"></div>`; 
+    updateEquippedItemVisual("combatPlayerItemVisual"); 
+    document.getElementById("combatLog").innerHTML = "<p style='color:#ccc;'>O combate começou! Boa sorte.</p>"; 
+    updateCombatUI(); 
+    toggleMenu('combatScreen', true); 
+    inCombat = true; 
+}
+function buildInfiniteWaveEnemy() { 
+    document.getElementById("combatSubTitle").innerText = `Desafio Progressivo | Wave ${infiniteWave}`; 
+    c_enemyMaxHp = Math.floor(c_playerMaxHp * (0.5 + (infiniteWave * 0.15))); 
+    c_enemyHp = c_enemyMaxHp; 
+    c_enemyDmg = Math.floor(c_playerDmg * (0.5 + (infiniteWave * 0.15))); 
+    document.getElementById("enemyTitle").innerText = `Inimigo Wave ${infiniteWave}`; 
+    let eBall = document.getElementById("combatEnemyBall"); 
+    eBall.innerText = "👾"; 
+    eBall.style.background = `hsl(${(infiniteWave * 45) % 360}, 60%, 25%)`; 
+}
+function buildStoryEnemy() { 
+    let sLevelIdx = storyLevel - 1; 
+    let sData = storyData[sLevelIdx]; 
+    let eBall = document.getElementById("combatEnemyBall"); 
+    if(storySubWave <= 3) { 
+        c_enemyMaxHp = Math.floor(c_playerMaxHp * (0.5 + (storyLevel * 0.1))); 
+        c_enemyHp = c_enemyMaxHp; 
+        c_enemyDmg = Math.floor(c_playerDmg * (0.5 + (storyLevel * 0.1))); 
+        document.getElementById("enemyTitle").innerText = sData.e1; 
+        eBall.innerText = "💀"; eBall.style.background = "#555"; 
+        registerEnemyKilled("bandit", false); 
+    } else { 
+        if(storyLevel < 10) { 
+            c_enemyMaxHp = Math.floor(c_playerMaxHp * (1.0 + (storyLevel * 0.2))); 
+            c_enemyHp = c_enemyMaxHp; 
+            c_enemyDmg = Math.floor(c_playerDmg * (1.0 + (storyLevel * 0.15))); 
+            document.getElementById("enemyTitle").innerText = sData.e_boss; 
+            eBall.innerText = "👹"; eBall.style.background = "#8a1414"; 
+            registerEnemyKilled("demon", true); 
+        } else if(storyLevel === 10) { 
+            c_enemyMaxHp = Math.floor(c_playerMaxHp * 5.0); 
+            c_enemyHp = c_enemyMaxHp; 
+            c_enemyDmg = Math.floor(c_playerDmg * 2.5); 
+            document.getElementById("enemyTitle").innerText = sData.e_boss; 
+            eBall.innerText = "👑"; eBall.style.background = "linear-gradient(45deg, #000, #ff0000)"; 
+            registerEnemyKilled("ikaro", true); 
+        } else if(storyLevel === 11) { 
+            c_enemyMaxHp = Math.floor(c_playerMaxHp * 8.0); 
+            c_enemyHp = c_enemyMaxHp; 
+            c_enemyDmg = Math.floor(c_playerDmg * 4.0); 
+            document.getElementById("enemyTitle").innerText = sData.e_boss; 
+            eBall.innerText = "🌀"; eBall.style.background = "linear-gradient(45deg, #ff8800, #ffff00)"; 
+            registerEnemyKilled("tyrone", true); 
+        } 
+    } 
+}
+function registerEnemyKilled(enemyId, isBoss = false) { 
+    playerStats.totalEnemiesKilled++; 
+    if(isBoss) playerStats.totalBossesKilled++; 
+    if(!discoveredEnemies.find(e => e.id === enemyId)) discoveredEnemies.push({ id: enemyId, name: enemiesDatabase.find(e => e.id === enemyId)?.name || enemyId, kills: 1, firstSeen: Date.now() }); 
+    else discoveredEnemies.find(e => e.id === enemyId).kills = (discoveredEnemies.find(e => e.id === enemyId).kills || 0) + 1; 
+    updateRecordsUI(); 
+}
+function updateCombatUI() { let p_pct = Math.max(0, (c_playerHp / c_playerMaxHp) * 100); document.getElementById("playerHpBar").style.width = p_pct + "%"; document.getElementById("playerHpText").innerText = `HP: ${c_playerHp} / ${c_playerMaxHp}`; document.getElementById("playerDmgText").innerText = `Dano: ~${c_playerDmg}`; let e_pct = Math.max(0, (c_enemyHp / c_enemyMaxHp) * 100); document.getElementById("enemyHpBar").style.width = e_pct + "%"; document.getElementById("enemyHpText").innerText = `HP: ${c_enemyHp} / ${c_enemyMaxHp}`; document.getElementById("enemyDmgText").innerText = `Dano: ~${c_enemyDmg}`; }
+function triggerAnim(elementId, animClass, duration) { let el = document.getElementById(elementId); if(!el) return; el.classList.remove("anim-p-atk","anim-e-atk","anim-dmg","anim-crit","anim-dodge","anim-death"); void el.offsetWidth; el.classList.add(animClass); if(animClass !== "anim-death") setTimeout(() => el.classList.remove(animClass), duration); }
+function executeCombatTurn() { if(!inCombat) return; let atkBtn = document.getElementById("attackBtn"); atkBtn.style.pointerEvents = "none"; atkBtn.style.opacity = "0.5"; let artBonusCrit = 0, artBonusDodge = 0; equippedArtifacts.forEach(uid => { let a = artifacts.find(x => x.uid === uid); if(a) { if(a.type === "crit") artBonusCrit += a.val; if(a.type === "dodge") artBonusDodge += a.val; } }); let p_dodgeChance = Math.min(0.9, 0.3 + (p_agil * 0.1) + artBonusDodge), e_dodgeChance = 0.3; let p_critChance = Math.min(1.0, 0.1 + (p_prec * 0.1) + artBonusCrit), e_critChance = 0.1; triggerAnim("combatPlayerBall", "anim-p-atk", 300); if(Math.random() < e_dodgeChance) { logCombat("O oponente DESVIOU do seu ataque!", "#aaaaaa"); triggerAnim("combatEnemyBall", "anim-dodge", 400); } else { let p_hit = Math.floor(c_playerDmg * (0.85 + Math.random()*0.3)); if(Math.random() < p_critChance) { p_hit *= 2; logCombat(`💥 CRÍTICO! Você causou ${p_hit} de dano.`, "#00ff66"); triggerAnim("combatEnemyBall", "anim-crit", 400); } else { logCombat(`Você atacou e causou ${p_hit} de dano.`, "#00cc55"); triggerAnim("combatEnemyBall", "anim-dmg", 300); } c_enemyHp = Math.max(0, c_enemyHp - p_hit); playerStats.totalDamageDealt += p_hit; } updateCombatUI(); if(c_enemyHp <= 0) { triggerAnim("combatEnemyBall", "anim-death", 600); setTimeout(() => { endCombat(true); atkBtn.style.pointerEvents = "auto"; atkBtn.style.opacity = "1"; }, 600); return; } setTimeout(() => { if(!inCombat) return; triggerAnim("combatEnemyBall", "anim-e-atk", 300); if(Math.random() < p_dodgeChance) { logCombat("Você DESVIOU do ataque do oponente!", "#00aaff"); triggerAnim("combatPlayerBall", "anim-dodge", 400); } else { let e_hit = Math.floor(c_enemyDmg * (0.85 + Math.random()*0.3)); if(Math.random() < e_critChance) { e_hit *= 2; logCombat(`💥 O oponente acertou um CRÍTICO de ${e_hit} dano!`, "#ff0000"); triggerAnim("combatPlayerBall", "anim-crit", 400); } else { logCombat(`Oponente golpeou causando ${e_hit} de dano!`, "#ff3333"); triggerAnim("combatPlayerBall", "anim-dmg", 300); } c_playerHp = Math.max(0, c_playerHp - e_hit); playerStats.totalDamageTaken += e_hit; } updateCombatUI(); if(c_playerHp <= 0) { triggerAnim("combatPlayerBall", "anim-death", 600); setTimeout(() => { endCombat(false); atkBtn.style.pointerEvents = "auto"; atkBtn.style.opacity = "1"; }, 600); } else { atkBtn.style.pointerEvents = "auto"; atkBtn.style.opacity = "1"; } }, 600); }
+function logCombat(text, color) { const log = document.getElementById("combatLog"); log.innerHTML = `<p style='color:${color}; margin:4px 0;'>${text}</p>` + log.innerHTML; }
+function endCombat(playerWon) { 
+    inCombat = false; 
+    if(playerWon) { 
+        if(combatMode === "normal") { 
+            logCombat("VITÓRIA! Ganhou StruPoints Puros.", "gold"); 
+            unlockAchievement("first_blood"); 
+            points += 1500 * (1 + permanentMultiplier/5); 
+            updateScore(); 
+            registerEnemyKilled("bandit", false); 
+            setTimeout(() => { alert("VITÓRIA! Você derrotou a criatura do bioma e ganhou pontos extras."); fleeCombat(); }, 800); 
+        } else if(combatMode === "infinite") { 
+            let waveReward = Math.floor(350 * Math.pow(1.20, infiniteWave) * (1 + permanentMultiplier/5)); 
+            points += waveReward; 
+            logCombat(`WAVE ${infiniteWave} CONCLUÍDA! Recompensa: +${waveReward} pts`, "gold"); 
+            updateScore(); 
+            trackStat('highestInfiniteWave', infiniteWave - playerStats.highestInfiniteWave > 0 ? infiniteWave - playerStats.highestInfiniteWave : 0); 
+            document.getElementById("attackBtn").style.display = "none"; 
+            document.getElementById("nextWaveBtn").style.display = "block"; 
+            document.getElementById("nextWaveBtn").setAttribute("onclick", "advanceNextWave()");
+            if(infiniteWave >= 20) unlockAchievement("wave_20");
+            // Música de batalha CONTINUA (keepBattleMusic = true, então não faz nada)
+        } else if(combatMode === "story") { 
+            if(storySubWave < 4) { 
+                let waveReward = 500 * storyLevel; 
+                points += waveReward; 
+                logCombat(`INIMIGO DERROTADO! +${waveReward} StruPoints`, "gold"); 
+                updateScore(); 
+                document.getElementById("attackBtn").style.display = "none"; 
+                document.getElementById("nextWaveBtn").style.display = "block"; 
+                document.getElementById("nextWaveBtn").innerText = "PRÓXIMO INIMIGO ➡️"; 
+                document.getElementById("nextWaveBtn").setAttribute("onclick", "advanceNextStoryWave()"); 
+                // Música de batalha CONTINUA no história também
+            } else { 
+                let bossReward = 5000 * storyLevel; 
+                points += bossReward; 
+                logCombat(`CHEFE DERROTADO! FASE CONCLUÍDA! +${bossReward} StruPoints`, "gold"); 
+                updateScore(); 
+                if(storyLevel === 10) { 
+                    unlockAchievement("story_clear"); 
+                    setTimeout(() => { fleeCombat(); document.getElementById("endingScreen").style.display = "flex"; }, 1500); 
+                } else if(storyLevel === 11) { 
+                    setTimeout(() => { alert("INCRÍVEL! Você derrotou Tyrone DDD e concluiu o Desafio Supremo!"); fleeCombat(); }, 1500); 
+                    saveGame(); 
+                } else { 
+                    storyLevel++; 
+                    if(storyLevel===5) unlockAchievement("story_mid"); 
+                    setTimeout(() => { alert("Fase concluída com sucesso! Próximo nível desbloqueado."); fleeCombat(); }, 1500); 
+                    saveGame(); 
+                } 
+                // Ao concluir a fase do história, volta para o menu (para a música de batalha)
+                keepBattleMusic = false;
+            } 
+        } else if(combatMode === "dungeonEnemy" || combatMode === "dungeonBoss") { 
+            let isBoss = (combatMode === "dungeonBoss"); 
+            let reward = (isBoss ? 5000 : 500) * towerDifficulty; 
+            points += reward; 
+            logCombat(`${isBoss ? "CHEFE" : "INIMIGO"} DERROTADO! +${reward} pts`, "gold"); 
+            updateScore(); 
+            dungeonMap[dungeonRoomTarget.x][dungeonRoomTarget.y] = 1; 
+            if(isBoss) { 
+                let mapData = mapsData[currentMap]; 
+                if(mapData && mapData.drops && mapData.drops.length > 0) { 
+                    let logDropMsg = "Recompensas:\n"; 
+                    mapData.drops.forEach(dropItem => { 
+                        materials[dropItem.id] = (materials[dropItem.id] || 0) + (1 * towerDifficulty); 
+                        trackStat('totalMaterialsCollected', 1 * towerDifficulty); 
+                        if(!discoveredMaterials.find(m => m.id === dropItem.id)) discoveredMaterials.push({ id: dropItem.id, name: dropItem.name }); 
+                        logDropMsg += `[${1 * towerDifficulty}x ${dropItem.name}] `; 
+                    }); 
+                    alert(`O Guardião Caiu!\n${logDropMsg}`); 
+                } 
+                dropArtifact(); 
+                if(towerDifficulty === 1) unlockAchievement("tower_easy"); 
+                if(towerDifficulty === 3) unlockAchievement("tower_hard"); 
+                if(towerDifficulty > playerStats.highestTowerDifficulty) playerStats.highestTowerDifficulty = towerDifficulty; 
+                setTimeout(() => { alert("A torre foi purificada! Você venceu!"); fleeCombat(); exitDungeon(); }, 1500); 
+                // Ao completar a torre, volta para o mapa (para a música de batalha)
+                keepBattleMusic = false;
+            } else { 
+                setTimeout(() => { toggleMenu('combatScreen', false); toggleMenu('dungeonUI', true); renderDungeonMap(); }, 1000); 
+                // Após vencer um inimigo da torre, NÃO troca a música - continua a música da torre
+            } 
+        } 
+        updateRecordsUI(); 
+        checkTitleUnlocks(); 
+        if(craftedItems.length >= 20) unlockAchievement("craft_master");
+        if(playerStats.totalStruPointsEarned >= 10000000) unlockAchievement("rich_player");
+        if(playerStats.totalPotionsUsed >= 10) unlockAchievement("potions_master");
+        if(playerStats.totalBossesKilled >= 30) unlockAchievement("boss_hunter");
+        let towerCompleteCount = 0;
+        if(playerStats.highestTowerDifficulty >= 1) towerCompleteCount++;
+        if(playerStats.highestTowerDifficulty >= 2) towerCompleteCount++;
+        if(playerStats.highestTowerDifficulty >= 3) towerCompleteCount++;
+        if(towerCompleteCount >= 3) unlockAchievement("tower_complete_all");
+        let allMapsUnlocked = rebirthCount >= 20;
+        if(allMapsUnlocked) unlockAchievement("all_maps");
+        
+        // Só volta a música se NÃO for modo infinito E NÃO for modo história (enquanto não concluiu a fase)
+        if (combatMode !== "infinite" && !(combatMode === "story" && storySubWave <= 4)) {
+            if (!keepBattleMusic) {
+                playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu");
+            }
+        }
+    } else { 
+        logCombat("DERROTA! Suas forças se esgotaram.", "#ff3333"); 
+        if(ironSoulMode) { 
+            setTimeout(() => { 
+                isResetting = true; 
+                clearInterval(autoSaveInterval); 
+                localStorage.removeItem("RapeTheBallSave_V11"); 
+                document.getElementById("foundLossTitleText").innerText = ""; 
+                document.getElementById("foundLossText").innerText = "ACABOU PRA VOCÊ"; 
+                document.getElementById("foundScreen").style.display = "flex"; 
+                setTimeout(() => window.location.reload(), 3500); 
+            }, 1000); 
+        } else { 
+            setTimeout(() => { checkFoundEvent2(); fleeCombat(); }, 1000); 
+        }
+        // Quando perde, para a música de batalha e volta para a do mapa
+        keepBattleMusic = false;
+        playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu");
+    } 
+}
+function advanceNextWave() { 
+    infiniteWave++; 
+    c_playerHp = c_playerMaxHp; 
+    buildInfiniteWaveEnemy(); 
+    document.getElementById("attackBtn").style.display = "block"; 
+    document.getElementById("nextWaveBtn").style.display = "none"; 
+    logCombat(`--- Iniciando Wave ${infiniteWave} ---`, "#00aaff"); 
+    updateCombatUI(); 
+    inCombat = true; 
+    document.getElementById("combatEnemyBall").classList.remove("anim-death");
+    // Música de batalha CONTINUA (keepBattleMusic continua true)
+}
+function advanceNextStoryWave() { 
+    storySubWave++; 
+    c_playerHp = c_playerMaxHp; 
+    buildStoryEnemy(); 
+    document.getElementById("attackBtn").style.display = "block"; 
+    document.getElementById("nextWaveBtn").style.display = "none"; 
+    logCombat(`--- O próximo inimigo se aproxima ---`, "#00aaff"); 
+    updateCombatUI(); 
+    inCombat = true; 
+    document.getElementById("combatEnemyBall").classList.remove("anim-death");
+    // Música de batalha CONTINUA no história também
+}
+function fleeCombat() { 
+    inCombat = false; 
+    toggleMenu('combatScreen', false); 
+    keepBattleMusic = false;
+    playMusic(currentMap === "default" ? "menu" : mapsData[currentMap]?.music || "menu");
+}
+function updateStoryUI() { let sLevelIdx = storyLevel - 1; if(ikaroDefeated) { storyLevel = 11; sLevelIdx = 10; document.getElementById("adventureStoryLevelText").innerText = `Fase EX`; document.getElementById("storyScreenTitle").innerText = `EX - O Desafio Supremo`; document.getElementById("storyTextDesc").innerText = storyData[sLevelIdx].text; } else { if(storyLevel > 10) storyLevel = 10; document.getElementById("adventureStoryLevelText").innerText = `Fase ${storyLevel}`; document.getElementById("storyScreenTitle").innerText = `${storyLevel} - A Jornada`; document.getElementById("storyTextDesc").innerText = storyData[sLevelIdx].text; } const currentSkinData = skinsData.find(s => s.id === equippedSkin) || skinsData[0]; const sPBall = document.getElementById("storyPlayerBall"); sPBall.style.background = currentSkinData.bg; sPBall.style.boxShadow = currentSkinData.shadow; if(currentSkinData.img) sPBall.innerHTML = `<img src="${currentSkinData.img}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`; else sPBall.innerHTML = currentSkinData.emoji; let eBall = document.getElementById("storyEnemyBall"); if(storyLevel === 10) { eBall.innerText = "👑"; eBall.style.background = "linear-gradient(45deg, #000, #ff0000)"; } else if(storyLevel === 11) { eBall.innerText = "🌀"; eBall.style.background = "linear-gradient(45deg, #ff8800, #ffff00)"; } else { eBall.innerText = "👹"; eBall.style.background = "#8a1414"; } }
+function finishGame() { document.getElementById("endingScreen").style.display = "none"; document.getElementById("theEndScreen").style.display = "flex"; }
+function returnToTitle() { document.getElementById("theEndScreen").style.display = "none"; ikaroDefeated = true; saveGame(); window.location.reload(); }
+function resetGame(silent) { if(silent || confirm("⚠️ Tem certeza absoluta que deseja RESETAR tudo? Você perderá todos os seus pontos, melhorias, skins, artefatos, conquistas e mapas!")) { isResetting = true; clearInterval(autoSaveInterval); currentMap = "default"; localStorage.removeItem("RapeTheBallSave_V11"); window.location.reload(); } }
+
+// ==================================================
+// SAVE/LOAD
+// ==================================================
+function saveGame(){ if(isResetting) return; localStorage.setItem("RapeTheBallSave_V11", JSON.stringify({ points, multiplier, permanentMultiplier, multiplierPrice, critChance, critUpgradePrice, critUpgradeAmount, rebirthPrice, rebirthCount, totalClicks, currentMap, ownedSkins, equippedSkin, materials, craftedItems, equippedItem, activeBuff, p_forca, p_const, p_prec, p_agil, cost_forca, cost_const, cost_prec, cost_agil, storyLevel, ironSoulMode, achievements, artifacts, equippedArtifacts, ikaroDefeated, playerStats, discoveredEnemies, discoveredMaterials, unlockedTitles })); }
+function loadGame(){ const save = localStorage.getItem("RapeTheBallSave_V11"); if(!save) { hasSave = false; applySkinVisual(skinsData[0]); renderSkins(); updateInventoryText(); updateButtonsText(); updateRecordsUI(); return; } hasSave = true; const data = JSON.parse(save); points = data.points || 0; permanentMultiplier = data.permanentMultiplier || 0; multiplierPrice = data.multiplierPrice || 1000; critChance = data.critChance || 10000; critUpgradePrice = data.critUpgradePrice || 500; critUpgradeAmount = data.critUpgradeAmount || 25; rebirthPrice = data.rebirthPrice || 100000; rebirthCount = data.rebirthCount || 0; totalClicks = data.totalClicks || 0; ironSoulMode = data.ironSoulMode || false; ikaroDefeated = data.ikaroDefeated || false; p_forca = data.p_forca || 0; p_const = data.p_const || 0; p_prec = data.p_prec || 0; p_agil = data.p_agil || 0; cost_forca = data.cost_forca || 500; cost_const = data.cost_const || 500; cost_prec = data.cost_prec || 10000; cost_agil = data.cost_agil || 10000; storyLevel = data.storyLevel || 1; currentMap = data.currentMap || "default"; ownedSkins = data.ownedSkins || ["default"]; equippedSkin = data.equippedSkin || "default"; achievements = data.achievements || []; artifacts = data.artifacts || []; equippedArtifacts = data.equippedArtifacts || []; let savedMats = data.materials || {}; for(let key in materials) materials[key] = savedMats[key] || 0; craftedItems = data.craftedItems || []; equippedItem = data.equippedItem || null; activeBuff = data.activeBuff || { multiplier: 1, duration: 0, name: "" }; playerStats = data.playerStats || { totalClicks:totalClicks, totalDamageDealt:0, totalDamageTaken:0, totalBossesKilled:0, totalEnemiesKilled:0, totalRebirths:rebirthCount, totalPotionsUsed:0, totalCrafts:0, highestInfiniteWave:0, highestTowerDifficulty:0, totalStruPointsEarned:points, totalMaterialsCollected:0, totalSkinsUnlocked:ownedSkins.length, totalCombats:0 }; discoveredEnemies = data.discoveredEnemies || []; discoveredMaterials = data.discoveredMaterials || []; unlockedTitles = data.unlockedTitles || []; const currentSkin = skinsData.find(s => s.id === equippedSkin) || skinsData[0]; currentSkinMult = currentSkin.mult; applySkinVisual(currentSkin); updateEquippedItemVisual("equippedItemVisual"); checkAutoMapUnlock(); recalculateMultiplier(); updateScore(); updateButtonsText(); renderSkins(); updateInventoryText(); updateBuffDisplay(); updateRecordsUI(); checkTitleUnlocks(); }
+loadGame(); updateScore(); updateRecordsUI(); syncMobileNav();
+
+setInterval(() => { if(activeBuff.duration > 0) { activeBuff.duration--; if(activeBuff.duration <= 0) { activeBuff.multiplier = 1; activeBuff.name = ""; alert("O efeito da sua poção alquímica expirou!"); recalculateMultiplier(); } updateScore(); updateBuffDisplay(); } }, 1000);
+</script>
+</body>
+</html>
